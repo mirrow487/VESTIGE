@@ -1,13 +1,14 @@
 # VESTIGE: Game Design Document
 
 **Platform:** Minecraft Java Edition 1.21.1 · NeoForge · Java 21 · Gradle
-**Document status:** v1.0, design baseline (Milestone 0). Nothing here is implemented yet.
+**Document status:** v1.1: design baseline, revised after Milestone 1 technical verification (see [ARCHITECTURE.md](ARCHITECTURE.md)). Nothing gameplay-related is implemented yet.
 **Scope note:** This is the design target. Every milestone will cut it into shippable, tested pieces. A feature counts as done only after it has been built and tested in-game.
 
 ---
 
 ## Table of Contents
 
+0. [Development Priorities](#0-development-priorities)
 1. [Vision](#1-vision)
 2. [Design Pillars](#2-design-pillars)
 3. [World Premise & Narrative](#3-world-premise--narrative)
@@ -36,9 +37,25 @@
 26. [Multiplayer Rules](#26-multiplayer-rules)
 27. [Configuration](#27-configuration)
 28. [Content Budget](#28-content-budget)
-29. [Technical Risks to Verify in Milestone 1](#29-technical-risks-to-verify-in-milestone-1)
+29. [Technical Risks: Resolved in Milestone 1](#29-technical-risks-resolved-in-milestone-1)
 30. [Milestone Roadmap](#30-milestone-roadmap)
 31. [Glossary](#31-glossary)
+
+---
+
+## 0. Development Priorities
+
+These are binding project priorities set by the project owner. When a trade-off appears, they win.
+
+1. **Full scope is the target.** 7 bosses (+1 optional), ~35 enemy types, and ~45 weapons stay as long-term targets. Content is implemented gradually, never cut to reduce effort.
+2. **Combat comes first.** The Elden Ring-inspired combat (smooth animations, dodge rolls, stamina, weapon-specific movesets, boss attack patterns) is the most important system. Other systems may wait for it; it may not be compromised for them.
+3. **NPC housing is essential.** NPCs must move into suitable player-built houses and have individual shops, dialogue and unlock conditions.
+4. **Every dimension is a full region.** The Overworld, Nether and End each get meaningful exploration, unique structures, caves, enemies, equipment and bosses.
+5. **The Hush is a true evil biome**, not a recolored Deep Dark: its own surface, caves, spread, enemies, structures, materials and boss.
+6. **The Dragon Egg boss (Vael) is a centerpiece** encounter with original mechanics and a unique design.
+7. **Minecraft visual identity + dark fantasy.** Blocky, pixel-art, readable, and moody.
+
+Core gameplay systems are never sacrificed to reduce scope. If a milestone runs long, it is split, not hollowed out.
 
 ---
 
@@ -216,7 +233,9 @@ The Overworld world border *is* the Pale. It expands as Wicks are lit at the Hea
 - Expansion is **animated**: the border lerps outward over 60 seconds with a world-wide sound cue and a Ledger entry.
 - All values, the center, and the expansion speed are configurable. A "static border" option disables progression expansion.
 - **The Pale's visuals:** dense white fog near the border, ash-like particles, and muted sounds. **Pale-touched** elite variants spawn within 64 blocks of the edge (more dangerous, better loot).
-- **Other dimensions:** In vanilla, the Nether and End borders follow the Overworld border (the Nether scaled by coordinate scale). This creates natural gating: at a radius of 750, the Nether is ~94 blocks; after the Tithe Wick, it is ~219. End outer islands (1,024+ blocks out) become reachable only after the Resounding (radius 2,500). *This vanilla behavior must be verified in Milestone 1, with a fallback of setting each dimension's border explicitly.*
+- **Other dimensions (verified in Milestone 1):** vanilla copies the Overworld border's size *unscaled* to the Nether and End; only the center is divided by the coordinate scale. VESTIGE therefore manages them explicitly. A listener on the Overworld border runs after vanilla's delegate and rescales:
+  - **Nether radius = Overworld radius ÷ `border.netherDivisor`** (default **4**): 188 → 250 → 312 → 438 → 625 → 750. A divisor of 4 (not 8) keeps all five Nether biomes and the Counting House reachable at each stage.
+  - **End radius = Overworld radius** (divisor 1). End outer islands (1,024+ blocks from the center) become reachable only after the Resounding (radius 2,500), a natural gate that matches the Eye of Ender gate.
 
 ### 6.2 Rings (distance bands)
 
@@ -234,7 +253,7 @@ Distance from the world center sets enemy tier, structure density, and loot tier
 
 ### 6.3 Guaranteed placement
 
-A finite world must *guarantee* key content. Boss arenas and key structures use custom structure placement constrained to their ring, with a fallback search at world creation. If no valid biome exists in the ring, the structure brings its own terrain. Strongholds are reconfigured so at least one lies inside the Reaches.
+A finite world must *guarantee* key content. Boss arenas and key structures use custom structure placement constrained to their ring, with a fallback search at world creation. If no valid biome exists in the ring, the structure brings its own terrain. Strongholds are reconfigured (datapack override of `strongholds.json`, ring `distance` 32 → 20) so the first ring lands about 880–1,680 blocks from the center: inside the Pale once the Resounding expands it.
 
 ### 6.4 Biomes: every biome has a reason to visit
 
@@ -292,7 +311,7 @@ Combat is **commitment-based**: every action has windup, active, and recovery fr
 | Heavy attack | **R** (tap) / hold to charge | Charged heavies have hyperarmor |
 | Guard / Off-hand | RMB | Block with a shield, parry with a buckler, off-hand attack, or use a catalyst |
 | Dodge roll / backstep | **Left Alt** (configurable to double-tap direction) | No direction = backstep |
-| Lock-on | **Middle mouse** / **Tab** | Scroll switches targets |
+| Lock-on | **Middle mouse** | Scroll switches targets |
 | Weapon art | **F** | Costs Resonance |
 | Wick Flask | **H** | Animation-locked heal |
 | Swap stance | **V** | Combat stance ↔ Exploration stance |
@@ -300,10 +319,12 @@ Combat is **commitment-based**: every action has windup, active, and recovery fr
 | Equipment screen | **K** | RPG equipment UI |
 | Lamp Ledger | **J** | Journal |
 
+Combat binds use a dedicated **combat key-conflict context**: they are active only in combat stance, while vanilla binds on the same keys (pick block on middle mouse, offhand swap on F) are suppressed there. Outside combat stance, the vanilla keys behave normally.
+
 ### 7.3 Stances: integrating with Minecraft's hotbar
 
 - **Exploration stance:** vanilla hotbar behavior (mine, place, eat, use tools). Attacks use vanilla rules (weak). This is for building.
-- **Combat stance:** the hand renders and uses the **Main Weapon slot**. The off-hand uses the **Secondary slot**. LMB and RMB are rebound to combat actions. Mining and placing are disabled. The hotbar is visually dimmed.
+- **Combat stance:** the weapon in the **Main Weapon slot** is *physically moved* into the main hand, and the item that was there is stashed in a hidden holding slot. The same happens for the **Secondary slot** and the off-hand. Leaving the stance swaps everything back. The swap is server-authoritative and moves the real item stacks, so nothing can be duplicated, vanilla rendering and attributes keep working, and other mods see a normal held item. LMB and RMB become combat actions; mining and placing are disabled; the hotbar is dimmed. Opening an inventory, dying, logging out, or changing dimension restores the stashed items first.
 - Taking damage or locking on automatically enters combat stance (configurable).
 
 ### 7.4 Attack anatomy
@@ -528,28 +549,52 @@ All custom enemies share one state machine:
 
 ### 9.5 The equipment screen (layout)
 
-*The uploaded reference image is not in the repository. Add it under `docs/reference/` and the layout below will be revised to match it.*
+**Visual reference:** the Elden Ring quick-item layout supplied by the project owner. Elements adopted from it:
+
+| Reference element | VESTIGE translation (pixel art, GUI-scale aware) |
+|---|---|
+| Square slot tiles in a **cross arrangement** (left, top, right, bottom) | The **Readiness Cross** in the center of the screen and on the HUD: right = Main Weapon, left = Secondary, top = Active Relic, bottom = Wick Flask |
+| Dark, slightly translucent tile with a soft inner vignette and a thin 1-px lighter frame | Tile texture: 24×24 px, near-black slate (#121116 → #1c1a21 vignette), 1-px frame in worn pale stone (#5d5a55) with a darker outer shadow line |
+| Faint **ghost silhouette at the top center** of each tile showing the slot type | Each slot draws a 9-px, ~25%-opacity silhouette of its category (sword, shield, helm, ring, diamond-talisman, relic-box, flask). It disappears behind the item once the slot is filled |
+| A thin **ornamental rule near the bottom edge** of each tile | A 1-px, 14-px-wide hairline (#7a6f5c), centered 3 px above the bottom edge |
+| Item fills most of the tile, warm-lit against a desaturated UI | Items render at 16×16 centered (scaled ×1.25 in the large central tiles), so warm item colors pop against the grey UI |
+| **Serif quantity numerals** at the bottom-right with a dark shadow | Counts and flask charges in the bottom-right corner, using a small custom pixel serif font texture with a 1-px shadow |
+| Gritty dark background | The screen background is a blurred world with a dark grain overlay (#000 at 55% + noise texture) instead of the vanilla dirt or gradient |
+| Slots separated by small even gaps, grouped in clusters | Clusters with 2-px gaps between tiles and 10-px gaps between clusters; no heavy boxes or panels around groups |
+
+**Layout:**
 
 ```
-┌───────────────────────────────────────────────────────────────────┐
-│  ⟡ E Q U I P M E N T ⟡                       Burden: ▓▓▓▓░░ Medium │
-├───────────────┬───────────────────────────────┬───────────────────┤
-│  [Head]       │                               │  [Main Weapon]    │
-│  [Chest]      │        PLAYER PAPER-DOLL      │  [Secondary]      │
-│  [Legs]       │     (live 3D render, rotatable│  [Swap Set ⇄]     │
-│  [Boots]      │        with the mouse)        │                   │
-│               │                               │  [Wick Flask 3/5] │
-├───────────────┴───────────────────────────────┴───────────────────┤
-│  RINGS  [◯][◯]    TALISMANS  [◇][◇]    RELICS  [▣][▣][▣][▣]       │
-├───────────────────────────────────────────────────────────────────┤
-│ STATS: HP 140/140  STA 115  POISE 34  │ ABSORPTION  Phy 18%  Cin 9% │
-│ AR: Slash 182 (+Res 40)               │ Hush 12% Res 6% Void 4% Rad 3│
-│ Roll: Medium (i-frames 3–9)           │ SET BONUS: Bellbronze (3/4)  │
-└───────────────────────────────────────────────────────────────────┘
-        (player inventory grid below, styled to match)
+┌──────────────────────────────────────────────────────────────────────┐
+│ ◈ EQUIPMENT                                     Burden ▓▓▓▓▓░░ Medium │
+│                                                                      │
+│   ARMOR                       READINESS                 ACCESSORIES  │
+│  ┌──┐                           ┌──┐                    RINGS        │
+│  │⛑ │ Head                      │▣ │ Relic (active)     ┌──┐┌──┐      │
+│  └──┘                           └──┘                    │◯ ││◯ │      │
+│  ┌──┐                     ┌──┐ ┌────┐ ┌──┐              └──┘└──┘      │
+│  │▤ │ Chest   (Secondary) │⛨ │ │DOLL│ │⚔ │ (Main)       TALISMANS    │
+│  └──┘                     └──┘ └────┘ └──┘              ┌──┐┌──┐      │
+│  ┌──┐                           ┌──┐                    │◇ ││◇ │      │
+│  │▥ │ Legs                      │⚱5│ Wick Flask         └──┘└──┘      │
+│  └──┘                           └──┘                    RELICS       │
+│  ┌──┐                    swap set ⇄ [⚔][⛨] (small)      ┌──┐┌──┐┌──┐┌──┐│
+│  │▦ │ Boots                                             │▣ ││▣ ││▣ ││⛓ ││
+│  └──┘                                                   └──┘└──┘└──┘└──┘│
+│ ──────────────────────────────────────────────────────────────────── │
+│  HP 140   STA 115   POISE 34   │ ABSORPTION  Phy 18%  Cin 9%  Hush 12% │
+│  AR Slash 182 (+Res 40)        │             Res 6%   Void 4% Rad 3%  │
+│  Roll: Medium (i-frames 3–9)   │ SET: Bellbronze (3/4): Toll inactive │
+│ ──────────────────────────────────────────────────────────────────── │
+│                  [ player inventory grid, same tile style ]          │
+└──────────────────────────────────────────────────────────────────────┘
 ```
 
-**Style:** dark slate panels (#16151a / #22202a), aged brass borders (#8a6d3b), ember-orange highlights (#e08a3c), parchment-colored text (#d9cfb8), and pixel-art slot frames with distinct silhouettes per slot type (ring = circle, talisman = diamond, relic = square). Locked slots appear as chained frames with a tooltip describing the unlock. Hovering an item shows a comparison tooltip with green/red deltas.
+- The **center cross** reproduces the reference's arrangement: four large tiles (28×28) around a live, mouse-rotatable **paper-doll** of the player. It is the "what I fight with" cluster.
+- **Armor** is a vertical column of four tiles (left). **Accessories** are grouped tiles (right). Locked slots (`⛓`) show a chained tile, and their tooltip names the unlock condition.
+- **Text style:** section labels in small caps, parchment color (#d9cfb8) at 70% opacity; values at full opacity; ember (#e08a3c) only for highlights (set bonuses active, upgrades).
+- **Tooltips:** dark tile-style frame. Comparison mode shows green/red deltas against the equipped item.
+- **The HUD uses the same cross:** a 4-tile Readiness Cross at the bottom-left (Main / Secondary / Relic / Flask with charges), like the reference.
 
 ---
 
@@ -688,6 +733,7 @@ The Hush is **silence that hungers**. It doesn't burn or rot; it *mutes*. Inside
 
 ### 14.2 Distribution
 - 2 large **Hush Scars** per world by default (configurable 1–4), 250–400 blocks across. One is guaranteed in the Marches; one is in the Wilds.
+- **Generation (verified in Milestone 1):** a custom biome source wraps the vanilla Overworld biome source and returns the Hush biome inside seed-derived scar shapes, with noisy edges, at guaranteed ring positions. Vanilla surface rules, features, spawns, fog, and music then follow the Hush biome everywhere it appears. No third-party biome library is needed.
 - Each scar has a surface layer (corrupted biome), Echo Hollows below, and a Choir Pit leading to the deep dark. The Unsung Nave sits beneath the largest scar.
 
 ### 14.3 Surface look
@@ -1182,7 +1228,7 @@ Void shards fall in the outer rings. They contain Heirshell fragments but spawn 
 
 | Element | Description |
 |---|---|
-| **HUD** | Top-left: HP (red), Stamina (green), Resonance (gold) bars with segment ticks. Bottom-right: Glim counter. Flask icon with charges. Equipped weapon and secondary icons near the hotbar. The vanilla heart row is hidden (replaced by the HP bar); the armor and hunger bars stay visible because hunger matters |
+| **HUD** | Top-left: HP (red), Stamina (green), Resonance (gold) bars with segment ticks. Bottom-right: Glim counter. Bottom-left: the **Readiness Cross** (4 tiles in the reference style: Main / Secondary / Relic / Flask with charge count). The vanilla heart row is hidden (replaced by the HP bar); the armor and hunger bars stay visible because hunger matters |
 | **Boss bar** | Bottom-center, wide: name in serif-ish pixel caps, HP bar with phase pips, poise sub-bar |
 | **Lock-on reticle** | Brass diamond on the target. Red when a red-glint attack is incoming |
 | **Noise ring** | Hush only: a crosshair ring filling with noise |
@@ -1266,30 +1312,19 @@ This budget is large. Each milestone must deliver a **vertical slice**: fewer it
 
 ---
 
-## 29. Technical Risks to Verify in Milestone 1
+## 29. Technical Risks: Resolved in Milestone 1
 
-These are *design-relevant* assumptions that must be confirmed against the real 1.21.1 NeoForge toolchain before code depends on them. No API is assumed to exist until verified.
+All 14 assumptions were checked against the real NeoForge 21.1.266 / Minecraft 1.21.1 toolchain: decompiled sources, compiled prototypes, GameTests and in-game runs. Full details and evidence are in [ARCHITECTURE.md §2](ARCHITECTURE.md#2-verification-results).
 
-| # | Assumption | Verification / fallback |
-|---|---|---|
-| 1 | NeoForge for 1.21.1 (21.1.x) with the ModDevGradle plugin is the current recommended setup | Check the official NeoForge MDK; pin exact versions |
-| 2 | Per-player persistent data via NeoForge **data attachments** (`AttachmentType`) | Confirm the API surface and sync approach |
-| 3 | Networking via `CustomPacketPayload` with stream codecs and the NeoForge payload registrar | Confirm registration event and handler threading |
-| 4 | Item stats via **data components** (1.20.5+ replacement for item NBT) | Confirm the custom component registration path |
-| 5 | Hiding vanilla HUD layers (hearts) via GUI layer events | Confirm event names and layer IDs |
-| 6 | **Entity animation library** (e.g., GeckoLib for NeoForge 1.21.1) | Check that a compatible release exists; fallback: hand-written keyframe animation in custom `EntityModel`s |
-| 7 | **Player animation library** (e.g., a playerAnimator port for 1.21.1) | Check availability and license; fallback: custom arm/body posing in render events |
-| 8 | **Adding an overworld biome** (the Hush): TerraBlender for NeoForge 1.21.1, or overriding the overworld multi-noise biome source via datapack | Pick one after testing; the fallback is generating Hush scars as large structures that place custom blocks, plus a biome-modifier-only approach |
-| 9 | Nether and End world borders follow the Overworld border (coordinate scale) | Test in-game; fallback: set each dimension's border explicitly on expansion |
-| 10 | Strongholds can be repositioned via a datapack `structure_set` override | Test placement with `/locate` |
-| 11 | Jigsaw structures and structure templates (`.nbt`) authored and placed via datapack JSON | Confirm worldgen registry formats for 1.21.1 |
-| 12 | Client audio ducking (the Hush and Warden phase 3) | Confirm sound-engine hooks / sound events available on the client |
-| 13 | Server performance of Hush spread and housing flood-fill | Profile with budgets |
-| 14 | Testing: NeoForge **GameTest** framework for headless automated tests in this environment | Confirm the run configuration works headless |
+Changes to the design caused by verification:
+- **Nether border:** vanilla does *not* scale it. VESTIGE scales it explicitly, with a default divisor of 4 (§6.1).
+- **Hush generation:** a custom wrapping biome source instead of TerraBlender, because it guarantees scar placement per ring (§14.2).
+- **Strongholds:** ring distance override 32 → 20 (§6.3).
+- **Combat stance:** physical item swap between RPG slots and the hands (§7.3).
+- **Controls:** combat binds use their own key-conflict context (§7.2).
+- **Audio:** the container has no audio device, so Hush and Warden audio ducking can only be verified by logic and logs, not by listening. It is flagged that way when implemented.
 
-**Honest constraints:**
-- Visual verification (animations, UI looks) needs a running client. The plan is to attempt a headless client with software rendering for screenshots. If that isn't possible in the build environment, the visual parts will be flagged as **"compiled and logic-tested, not visually verified"** rather than claimed as working.
-- Art (textures, models, animations) will be produced as functional, original pixel art and Blockbench-format JSON authored in code. It will be consistent with this document but simpler than a dedicated artist's work. Swapping in better art later requires no code changes.
+Visual verification is possible. A full client runs headless (software OpenGL under Xvfb) and loads into a world, so HUD, UI, models and animations are checked from real in-game screenshots.
 
 ---
 
