@@ -1,0 +1,15 @@
+{
+  "vestige.configuration.border": "The Pale (World Border)",
+  "vestige.configuration.border.endDivisor": "End Border Divisor",
+  "vestige.configuration.border.endDivisor.tooltip": "End border size = Overworld border size divided by this value.",
+  "vestige.configuration.border.minimumScaledSize": "Minimum Scaled Border Size",
+  "vestige.configuration.border.minimumScaledSize.tooltip": "Smallest diameter in blocks a scaled dimension border may shrink to.",
+  "vestige.configuration.border.netherDivisor": "Nether Border Divisor",
+  "vestige.configuration.border.netherDivisor.tooltip": "Nether border size = Overworld border size divided by this value.",
+  "vestige.configuration.border.scaleDimensions": "Scale Dimension Borders",
+  "vestige.configuration.border.scaleDimensions.tooltip": "Scale the Nether and End borders from the Overworld border. Vanilla copies the size unscaled.",
+  "vestige.configuration.border.tooltip": "World border behaviour across dimensions.",
+  "vestige.configuration.section.vestige.server.toml": "World Settings",
+  "vestige.configuration.section.vestige.server.toml.title": "VESTIGE World Settings",
+  "vestige.configuration.title": "VESTIGE Configuration"
+}

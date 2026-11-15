@@ -31,14 +31,14 @@ All versions are pinned. They were resolved from the live Maven repositories on 
 |---|---|---|---|---|
 | Minecraft | 1.21.1 | n/a | n/a | Target |
 | Java | 21 (OpenJDK 21.0.12) | n/a | n/a | Toolchain |
-| Gradle | 8.14.3 | Wrapper (pinned in M2) | n/a | Build |
+| Gradle | 8.14.3 | Wrapper (`gradlew`, committed) | n/a | Build |
 | NeoForge | **21.1.266** | `net.neoforged:neoforge` @ maven.neoforged.net | LGPL-2.1 | Mod loader |
 | ModDevGradle | **2.0.148** | `net.neoforged.moddev` plugin | LGPL-2.1 | Gradle plugin (decompile, runs, jarJar) |
 | GeckoLib | **4.9.3** | `software.bernie.geckolib:geckolib-neoforge-1.21.1` @ dl.cloudsmith.io | MIT | Entity and boss model animation |
 | playerAnimator | **2.0.4+1.21.1** | `dev.kosmx.player-anim:player-animation-lib-forge` @ maven.kosmx.dev | MIT | Player attack, roll, and flask animations |
 | ~~TerraBlender~~ | *(not used)* | (1.21.1-4.1.0.8 verified available) | LGPLv3 | Replaced by a custom biome source (ADR-004) |
 | Parchment mappings | *(not used)* | Redirects to a host blocked in the build environment | n/a | Official Mojang names are used; parameter names stay `p_xxxxx_` |
-| JUnit 5 | latest 5.x (pinned in M2) | Maven Central | EPL | Pure-logic unit tests |
+| JUnit 5 | **5.14.4** (BOM) | Maven Central | EPL | Pure-logic unit tests and architecture rules |
 
 **Distribution:** GeckoLib and playerAnimator are bundled with **Jar-in-Jar** (`jarJar` configuration of ModDevGradle, version ranges `[4.9.3,4.10)` and `[2.0.4+1.21.1,2.1)`). The release is a single `vestige-<version>.jar`. Verified: the built jar contains `META-INF/jarjar/geckolib-neoforge-1.21.1-4.9.3.jar`, `player-animation-lib-forge-2.0.4+1.21.1.jar`, and `metadata.json`.
 
@@ -95,12 +95,28 @@ Method: a throwaway NeoForge project (all candidate dependencies) was compiled. 
 
 Single Gradle project, mod id **`vestige`**, base package **`dev.vestige`**.
 
+### 4.1 Module system (implemented in Milestone 2)
+
+Every gameplay system is a **module**: a top-level package under `dev.vestige` with one class implementing `core.VestigeModule` (`id()` equals the package name; `init(modBus, gameBus)`).
+
+- **Modules own their registrations.** Each module creates its own `DeferredRegister`s and listeners. *Changed from the M1 plan*, which had a central `registry/` package. Per-module ownership keeps systems separable (requirement: combat, weapons, equipment, bosses, NPCs, world generation, and UI as separate systems).
+- **`core.VestigeModules`** is the single ordered list of common modules. `core.ModuleLoader` initializes them and rejects duplicate ids.
+- **Client code** lives in `dev.vestige.client` and starts from a separate `@Mod(value = "vestige", dist = Dist.CLIENT)` entry point (`VestigeClient`). Client-side parts of a system go in `client/<system>/`.
+- **Dependency rules are enforced by a unit test** (`ArchitectureRulesTest`), which scans imports on every build:
+  1. Every module package must be declared with the modules it may depend on (`core` and root classes like `VestigeIds` are always allowed).
+  2. Common code must not import client classes (`dev.vestige.client`, `net.minecraft.client`, `com.mojang.blaze3d`, `net.neoforged.neoforge.client`).
+  3. Module ids must equal package names.
+  Adding a dependency between systems is therefore an explicit, reviewed change to that table.
+
+**Implemented in M2:** `core`, `config`, `pale` (cross-dimension border scaling), `datagen`, `dev`, `gametest`, and `client` (entry point and config screen). The tree below is the full target layout; packages are created when their system is implemented, never as empty placeholders.
+
+**Target layout:**
+
 ```
 src/main/java/dev/vestige/
-├── Vestige.java                  // @Mod entry: wires DeferredRegisters, configs, listeners
-├── registry/                     // VItems, VBlocks, VEntities, VComponents, VAttachments, VMenus,
-│                                 // VSounds, VParticles, VBiomeSources, VStructureTypes, VFeatures,
-│                                 // VLootModifiers, VCreativeTabs, VGameRules, VDamageTypes
+├── Vestige.java                  // @Mod entry: registers configs, initializes the module list
+├── VestigeIds.java               // MOD_ID, logger, id() helper
+├── core/                         // VestigeModule, ModuleLoader, VestigeModules (module list)
 ├── config/                       // ServerConfig, ClientConfig (ModConfigSpec)
 ├── network/                      // Payload records + registration (§6), one sub-package per feature
 ├── progression/                  // WorldProgress (SavedData): bosses, wicks, resounding, flags
@@ -144,7 +160,8 @@ src/main/java/dev/vestige/
 │   ├── render/                   // GeckoLib renderers, telegraph decals, hit FX
 │   └── sound/                    // Hush and Warden ducking, telegraph cues
 ├── datagen/                      // Providers: models, blockstates, lang, loot, recipes, tags
-└── gametest/                     // GameTests per subsystem
+├── dev/                          // Dev-only hooks behind system properties (smoke autostop, test driver)
+└── gametest/                     // GameTests per subsystem (gametest/<module>/)
 src/main/resources/
 ├── META-INF/neoforge.mods.toml
 ├── assets/vestige/{textures,models,geo,animations,player_animations,lang,sounds}
@@ -342,10 +359,22 @@ Player attack animations are **generated from the same moveset JSON** the server
 | Visual | `runClient` under `xvfb-run` (Mesa llvmpipe) + `--quickPlaySingleplayer` + screenshots | HUD, screens, entity models, animations, telegraph visuals |
 | Manual (owner) | Real client | Feel, audio, balance |
 
+### 9.1a Commands (implemented in M2)
+| Command | What it runs |
+|---|---|
+| `./gradlew build` | Compile, unit tests, architecture rules, JAR (`build/libs/vestige-<version>.jar`) |
+| `./gradlew runGameTestServer` | All GameTests headless; the task fails if any required test fails |
+| `./gradlew runServer -Psmoke` | Dev dedicated server; logs `VESTIGE SMOKE …` and stops itself |
+| `scripts/prod-server-smoke.sh` | Installs the real NeoForge server and loads the **built JAR** (including Jar-in-Jar libraries) |
+| `scripts/verify.sh` | All of the above in sequence |
+| `xvfb-run ./gradlew runClient -PquickPlay=<world>` | Headless client straight into a world (screenshots via ImageMagick `import`) |
+
+See [DEVELOPMENT.md](DEVELOPMENT.md) for details.
+
 ### 9.2 Definition of done (per feature)
 1. Code compiles (`./gradlew build`) with no new warnings in VESTIGE code.
 2. Unit tests and GameTests for the feature pass. Earlier tests still pass.
-3. A dedicated-server smoke run passes.
+3. A dedicated-server smoke run passes (`scripts/verify.sh`, including the production-server run with the built JAR).
 4. For visual features: a screenshot from the headless client is reviewed. Features that can't be verified here (audio, real-time feel) are listed as **not verified** in the milestone report.
 5. Docs are updated (GDD if the design changed, `docs/systems/<system>.md` for the implementation).
 

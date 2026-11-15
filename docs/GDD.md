@@ -1,7 +1,14 @@
 # VESTIGE: Game Design Document
 
 **Platform:** Minecraft Java Edition 1.21.1 · NeoForge · Java 21 · Gradle
-**Document status:** v1.1: design baseline, revised after Milestone 1 technical verification (see [ARCHITECTURE.md](ARCHITECTURE.md)). Nothing gameplay-related is implemented yet.
+**Document status:** v1.2: design baseline. Milestones 0–2 are complete; gameplay systems start in Milestone 3. Implementation details are in [ARCHITECTURE.md](ARCHITECTURE.md).
+
+**Revision history**
+| Version | Milestone | Changes |
+|---|---|---|
+| 1.0 | M0 | Initial design |
+| 1.1 | M1 | Development priorities (§0), equipment UI from the reference image (§9.5), Nether border divisor 4 (§6.1), Hush generation via biome source (§14.2), stronghold distance (§6.3), stance item swap (§7.3), combat key context (§7.2) |
+| 1.2 | M2 | §27: config options now ship with their systems (current keys listed); §30: milestone status. No gameplay design changes |
 **Scope note:** This is the design target. Every milestone will cut it into shippable, tested pieces. A feature counts as done only after it has been built and tested in-game.
 
 ---
@@ -1277,7 +1284,17 @@ All screens share one style kit: slate panels, brass trims, ember highlights, an
 ---
 
 ## 27. Configuration
-Server config (TOML), including at least:
+
+**Implemented so far** (`serverconfig/vestige-server.toml`, editable in-game through the mod list's config screen):
+
+| Key | Default | Range | Since |
+|---|---|---|---|
+| `border.scaleDimensions` | `true` | n/a | M2 |
+| `border.netherDivisor` | `4.0` | 1–16 | M2 |
+| `border.endDivisor` | `1.0` | 1–16 | M2 |
+| `border.minimumScaledSize` | `32.0` | 1–1024 | M2 |
+
+Options are added in the same milestone as the system that reads them, so the file never contains switches that do nothing. **Planned** server config (TOML), including at least:
 - `border.initialRadius` (750), `border.expansions` (list per Wick), `border.maxRadius` (6000), `border.center`, `border.expansionSeconds` (60), `border.staticMode` (false).
 - `rings.mobScaling` (list), `rings.eliteChance`.
 - `hush.scarCount` (2), `hush.spreadEnabled`, `hush.spreadRate`, `hush.postResoundingMultiplier`.
@@ -1334,9 +1351,9 @@ Each milestone ends with: code written → imports and APIs verified → `./grad
 
 | # | Milestone | Deliverable (vertical slice) |
 |---|---|---|
-| 0 | **Game Design Document** | This document |
-| 1 | **Technical architecture** | Verified dependency list, package layout, data model (attachments, components, registries), networking map, ADRs for risks 1–14 |
-| 2 | **Project setup** | Compiling NeoForge 1.21.1 mod, CI-style build script, run configs, GameTest harness, empty registries, config files |
+| 0 | **Game Design Document** ✅ | This document |
+| 1 | **Technical architecture** ✅ | Verified dependency list, package layout, data model (attachments, components, registries), networking map, ADRs for risks 1–14 |
+| 2 | **Project setup** ✅ | Compiling NeoForge 1.21.1 mod, single-JAR release with bundled libraries, run configs, module system with enforced dependency rules, GameTest and unit-test harnesses, verification scripts (dev and production server), config with in-game screen, datagen, cross-dimension border scaling |
 | 3 | **Core RPG systems** | HP ×5 scaling, stamina, Resonance, Glim purse and Ember-Ghost, Wick Flask, Waylights (rest, respawn, travel), HUD |
 | 4 | **Combat system** | Stances, light/heavy combos, rolls with i-frames, guard/parry, poise/stagger/riposte, lock-on, damage formula, 3 weapon classes with arts, enemy AI framework + 2 test enemies (Hollowed, Tolling Ram) |
 | 5 | **Equipment system** | Equipment UI, slots and unlocks, item stat components, burden, reinforcement/reforge (temporary station until Old Rivet exists), first accessories |

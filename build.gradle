@@ -1,0 +1,150 @@
+plugins {
+    id 'java-library'
+    id 'idea'
+    id 'net.neoforged.moddev' version '2.0.148'
+}
+
+version = mod_version
+group = mod_group_id
+
+base {
+    archivesName = mod_id
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+repositories {
+    maven {
+        name = 'GeckoLib'
+        url = 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/'
+        content { includeGroup 'software.bernie.geckolib' }
+    }
+    maven {
+        name = 'KosmX'
+        url = 'https://maven.kosmx.dev/'
+        content { includeGroup 'dev.kosmx.player-anim' }
+    }
+}
+
+neoForge {
+    version = project.neo_version
+
+    runs {
+        configureEach {
+            systemProperty 'forge.logging.console.level', 'info'
+            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        }
+        client {
+            client()
+            gameDirectory = project.file('runs/client')
+            // Headless visual checks: ./gradlew runClient -PquickPlay=<world>
+            if (project.hasProperty('quickPlay')) {
+                programArguments.addAll('--quickPlaySingleplayer', project.property('quickPlay').toString())
+            }
+        }
+        server {
+            server()
+            programArgument '--nogui'
+            gameDirectory = project.file('runs/server')
+            // Smoke test: ./gradlew runServer -Psmoke  (server stops itself after startup checks)
+            if (project.hasProperty('smoke')) {
+                systemProperty 'vestige.dev.autostop', 'true'
+            }
+        }
+        gameTestServer {
+            type = 'gameTestServer'
+            gameDirectory = project.file('runs/gametest')
+        }
+        data {
+            data()
+            gameDirectory = project.file('runs/data')
+            programArguments.addAll(
+                    '--mod', project.mod_id, '--all',
+                    '--output', project.file('src/generated/resources/').getAbsolutePath(),
+                    '--existing', project.file('src/main/resources/').getAbsolutePath())
+        }
+    }
+
+    mods {
+        "${mod_id}" {
+            sourceSet(sourceSets.main)
+        }
+    }
+}
+
+sourceSets.main.resources {
+    srcDir 'src/generated/resources'
+    exclude '.cache/' // datagen bookkeeping, not game data
+}
+
+dependencies {
+    implementation "software.bernie.geckolib:geckolib-neoforge-${minecraft_version}:${geckolib_version}"
+    jarJar("software.bernie.geckolib:geckolib-neoforge-${minecraft_version}") {
+        version { strictly geckolib_version_range; prefer geckolib_version }
+    }
+
+    implementation "dev.kosmx.player-anim:player-animation-lib-forge:${playeranimator_version}"
+    jarJar('dev.kosmx.player-anim:player-animation-lib-forge') {
+        version { strictly playeranimator_version_range; prefer playeranimator_version }
+    }
+
+    testImplementation platform("org.junit:junit-bom:${junit_version}")
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+// neoforge.mods.toml is generated from src/main/templates with values from gradle.properties.
+var generateModMetadata = tasks.register('generateModMetadata', ProcessResources) {
+    var replaceProperties = [
+            minecraft_version            : minecraft_version,
+            minecraft_version_range      : minecraft_version_range,
+            neo_version                  : neo_version,
+            neo_version_range            : neo_version_range,
+            loader_version_range         : loader_version_range,
+            geckolib_version_range       : geckolib_version_range,
+            playeranimator_version_range : playeranimator_version_range,
+            mod_id                       : mod_id,
+            mod_name                     : mod_name,
+            mod_license                  : mod_license,
+            mod_version                  : mod_version,
+            mod_authors                  : mod_authors,
+            mod_description              : mod_description
+    ]
+    inputs.properties replaceProperties
+    expand replaceProperties
+    from 'src/main/templates'
+    into 'build/generated/sources/modMetadata'
+}
+sourceSets.main.resources.srcDir generateModMetadata
+neoForge.ideSyncTask generateModMetadata
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.compilerArgs.addAll(['-Xlint:deprecation', '-Xlint:unchecked'])
+}
+
+tasks.named('test', Test) {
+    useJUnitPlatform()
+    // Architecture rules scan the source tree.
+    systemProperty 'vestige.sourceRoot', project.file('src/main/java').absolutePath
+    inputs.dir('src/main/java')
+}
+
+tasks.named('jar', Jar) {
+    manifest {
+        attributes(
+                'Specification-Title': mod_id,
+                'Specification-Vendor': mod_authors,
+                'Specification-Version': '1',
+                'Implementation-Title': mod_name,
+                'Implementation-Version': mod_version,
+                'Implementation-Vendor': mod_authors)
+    }
+}
+
+idea {
+    module {
+        downloadSources = true
+        downloadJavadoc = true
+    }
+}
