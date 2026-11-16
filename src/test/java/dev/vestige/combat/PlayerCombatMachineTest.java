@@ -21,12 +21,12 @@ import org.junit.jupiter.api.Test;
 class PlayerCombatMachineTest {
     private static ActionDef action(int w, int a, int r) {
         return new ActionDef(new ActionDef.Timing(w, a, r, 0.4f, 0.4f, 0), ActionDef.Power.NONE, false, Optional.empty(),
-                ActionDef.Motion.NONE, Optional.empty(), "", Optional.empty(), Optional.empty(), 30, 0, ActionDef.Defense.NONE, Optional.empty());
+                ActionDef.Motion.NONE, Optional.empty(), "", Optional.empty(), Optional.empty(), 30, 0, ActionDef.Defense.NONE, Optional.empty(), ActionDef.Effects.NONE);
     }
 
     private static ActionDef withDefense(ActionDef d, ActionDef.Defense defense, Optional<ActionDef.Charge> charge, Optional<ActionDef.Art> art) {
         return new ActionDef(d.timing(), d.power(), d.hyperarmor(), d.hit(), d.motion(), d.telegraph(), d.pose(), charge, d.dodge(),
-                d.tracking(), d.inflictStagger(), defense, art);
+                d.tracking(), d.inflictStagger(), defense, art, d.effects());
     }
 
     private static final ActionDef GUARD = withDefense(action(4, 1, 6), new ActionDef.Defense(true, Optional.empty(), false),
@@ -39,10 +39,10 @@ class PlayerCombatMachineTest {
     private static final ActionDef LIGHT = action(5, 3, 10);
     private static final ActionDef HEAVY = new ActionDef(new ActionDef.Timing(10, 3, 12, 0.4f, 0.4f, 0), ActionDef.Power.NONE, true,
             Optional.empty(), ActionDef.Motion.NONE, Optional.empty(), "", Optional.of(new ActionDef.Charge(14, 0.45f, 0f)),
-            Optional.empty(), 30, 0, ActionDef.Defense.NONE, Optional.empty());
+            Optional.empty(), 30, 0, ActionDef.Defense.NONE, Optional.empty(), ActionDef.Effects.NONE);
     private static final ActionDef ROLL = new ActionDef(new ActionDef.Timing(0, 10, 6, 0.4f, 0.4f, 0), ActionDef.Power.NONE, false,
             Optional.empty(), ActionDef.Motion.NONE, Optional.empty(), "", Optional.empty(),
-            Optional.of(new ActionDef.Dodge(3, 9, 3.5f, 10)), 30, 0, ActionDef.Defense.NONE, Optional.empty());
+            Optional.of(new ActionDef.Dodge(3, 9, 3.5f, 10)), 30, 0, ActionDef.Defense.NONE, Optional.empty(), ActionDef.Effects.NONE);
 
     private static final MoveSetHandle WEAPON = new MoveSetHandle(ResourceLocation.parse("test:blade"), new MoveSet(
             Map.of("l1", LIGHT, "l2", LIGHT, "l3", LIGHT, "heavy", HEAVY, "run", LIGHT, "rollatk", LIGHT, "art", ART, "rip", LIGHT),

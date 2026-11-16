@@ -71,6 +71,29 @@ public final class HitGeometry {
         return dist <= radius + t.halfWidth();
     }
 
+    /**
+     * Expanding ring band centred {@code offset} ahead: on active tick {@code index} of {@code count}
+     * the front of the ring travels from {@code reach*index/count} to {@code reach*(index+1)/count};
+     * the band trails it by {@code thickness}.
+     */
+    public static boolean ring(Target t, double reach, double thickness, double offset, int index, int count, double yMin, double yMax) {
+        if (!heightOverlaps(t, yMin, yMax)) {
+            return false;
+        }
+        double[] band = ringBand(reach, thickness, index, count);
+        double df = t.forward() - offset;
+        double dist = Math.sqrt(df * df + t.right() * t.right());
+        return dist + t.halfWidth() >= band[0] && dist - t.halfWidth() <= band[1];
+    }
+
+    /** Inner and outer radius of a ring hitbox on an active tick. */
+    public static double[] ringBand(double reach, double thickness, int index, int count) {
+        int n = Math.max(1, count);
+        double outer = reach * (index + 1) / n;
+        double inner = Math.max(0.0, reach * index / n - thickness);
+        return new double[] {inner, outer};
+    }
+
     /** Portion of an arc swept during active tick {@code index} of {@code count} (from, to in degrees). */
     public static double[] arcSlice(double fromDeg, double toDeg, int index, int count) {
         if (count <= 0) {

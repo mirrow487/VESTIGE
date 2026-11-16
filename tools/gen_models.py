@@ -335,6 +335,155 @@ def hollowed_animations(heavy):
     return {'format_version': '1.8.0', 'animations': anims}
 
 
+# ----------------------------------------------------------------------------- the Tolling Ram
+WOOL = (214, 204, 182)
+WOOL_DARK = (168, 156, 134)
+FACE = (58, 52, 48)
+HORN = (122, 104, 80)
+HORN_DARK = (84, 70, 54)
+HORN_TIP = (214, 200, 168)
+HOOF = (40, 36, 34)
+BRONZE = (196, 138, 62)
+LEATHER_COL = (92, 60, 38)
+
+
+def wool(base=WOOL):
+    """Matted fleece: clumps of lighter and darker locks, ragged underside."""
+    def paint(face, x, y, w, h, rnd):
+        if face == 'down':
+            return noisy(rnd, [int(c * 0.7) for c in base], 6)
+        clump = ((x // 2) + (y // 2) * 3) % 4
+        f = (1.06, 0.94, 1.0, 0.88)[clump]
+        if face == 'up':
+            f += 0.06
+        elif h > 3 and y >= h - 2:
+            f -= 0.1
+        return noisy(rnd, [min(255, int(c * f)) for c in base], 7)
+    return paint
+
+
+def horn(face, x, y, w, h, rnd):
+    ridge = (x + y) % 3 == 0
+    return noisy(rnd, HORN_DARK if ridge else HORN, 6)
+
+
+def horn_tip(face, x, y, w, h, rnd):
+    return noisy(rnd, HORN_TIP if (x + y) % 3 else HORN, 6)
+
+
+def ram_face(face, x, y, w, h, rnd):
+    if face == 'north':
+        if y == 1 and x in (0, w - 1):
+            return (232, 176, 60, 255)      # amber eyes set wide
+        if y == h - 1 and 1 <= x <= w - 2:
+            return (30, 26, 24, 255)
+    return noisy(rnd, FACE, 6)
+
+
+def bell(face, x, y, w, h, rnd):
+    if face == 'down':
+        return (34, 26, 18, 255)            # the mouth of the bell
+    if face == 'up':
+        return noisy(rnd, [int(c * 0.85) for c in BRONZE], 6)
+    if y in (1, h - 2):
+        return noisy(rnd, [int(c * 0.72) for c in BRONZE], 6)   # engraved bands
+    if x == 1 and 1 < y < h - 2:
+        return (246, 206, 132, 255)                              # polished highlight
+    return noisy(rnd, BRONZE, 8)
+
+
+def tolling_ram():
+    m = Model('tolling_ram', 128, 128)
+    m.bone('root', None, (0, 0, 0))
+    m.bone('body', 'root', (0, 13, 0))
+    m.cube('body', (-5.5, 9, -8.5), (11, 10, 17), wool())
+    m.cube('body', (-6, 16, -7.5), (12, 3.5, 14), wool((226, 218, 198)), inflate=0.25)   # fleece ridge
+    m.cube('body', (-4.5, 8, -6.5), (9, 1.5, 12), wool(WOOL_DARK))                       # shaggy belly
+    m.bone('tail', 'body', (0, 17, 8.5))
+    m.cube('tail', (-1.5, 13.5, 8), (3, 4, 2), wool())
+    for side, sx in (('right', -1), ('left', 1)):
+        for end, z in (('front', -5.5), ('hind', 5.5)):
+            leg = f'{end}_{side}_leg'
+            x0 = 1.5 if side == 'left' else -4.5
+            m.bone(leg, 'body', (3 * sx, 10, z))
+            m.cube(leg, (x0, 4.5, z - 1.5), (3, 6, 3), wool(WOOL_DARK), mirror=side == 'left')
+            m.bone(f'{end}_{side}_shin', leg, (3 * sx, 4.5, z))
+            m.cube(f'{end}_{side}_shin', (x0 + 0.25, 1, z - 1.25), (2.5, 3.5, 2.5), solid(FACE), mirror=side == 'left')
+            m.cube(f'{end}_{side}_shin', (x0, 0, z - 1.5), (3, 1, 3), solid(HOOF))
+    m.bone('neck', 'body', (0, 15.5, -7.5))
+    m.cube('neck', (-3, 13, -12), (6, 7, 6), wool())
+    m.bone('bell', 'neck', (0, 13.5, -10.5))
+    m.cube('bell', (-3.2, 12.6, -12.4), (6.4, 1.4, 6.6), solid(LEATHER_COL))             # collar
+    m.cube('bell', (-0.6, 11.4, -13.6), (1.2, 1.4, 1.2), solid(IRON))                     # hanger
+    m.cube('bell', (-2.2, 7.4, -14.4), (4.4, 4.2, 4.2), bell)                              # the bell
+    m.cube('bell', (-2.7, 6.8, -14.9), (5.4, 0.8, 5.2), bell)                              # flared lip
+    m.cube('bell', (-0.6, 6.0, -12.9), (1.2, 1.0, 1.2), solid(IRON))                       # clapper
+    m.bone('head', 'neck', (0, 19, -11))
+    m.cube('head', (-3, 15.5, -17.5), (6, 6, 7), ram_face)
+    m.cube('head', (-2, 15.5, -19.5), (4, 3.5, 2), solid(FACE))                           # muzzle
+    m.cube('head', (-3.3, 20.5, -16.5), (6.6, 2, 5.5), wool((226, 218, 198)), inflate=0.1)  # forelock
+    for side, sx in (('right', -1), ('left', 1)):
+        # Ears and heavy ridged horns curling back, out and down past the jaw, pale at the tips.
+        m.cube('head', (3 if sx > 0 else -4.5, 18.5, -14.5), (1.5, 1, 2.5), solid(FACE))
+        hx = 2.4 if sx > 0 else -5.4
+        spiral = [((hx, 20.0, -15.5), (3, 3, 3), horn), ((hx + 1.8 * sx, 19.6, -13.0), (3, 3.4, 3), horn),
+                  ((hx + 2.8 * sx, 16.4, -11.8), (3, 3.6, 3), horn), ((hx + 2.4 * sx, 13.6, -13.6), (3, 3, 3), horn),
+                  ((hx + 1.4 * sx, 13.4, -16.2), (2.4, 2.4, 2.6), horn), ((hx + 0.8 * sx, 14.2, -18.0), (1.8, 1.8, 1.8), horn_tip)]
+        for origin, size, paint in spiral:
+            m.cube('head', origin, size, paint, mirror=side == 'left')
+    return m
+
+
+def ram_animations():
+    idle_len, walk_len = 3.6, 0.9
+    a = 'animation.tolling_ram.'
+    return {'format_version': '1.8.0', 'animations': {
+        a + 'idle': {'loop': True, 'animation_length': idle_len, 'bones': {
+            'body': {'position': channel(kf(0, [0, 0, 0]), kf(idle_len / 2, [0, 0.3, 0]), kf(idle_len, [0, 0, 0]))},
+            'neck': {'rotation': channel(kf(0, [0, 0, 0]), kf(idle_len * 0.3, [6, 4, 0]), kf(idle_len * 0.55, [14, -2, 0]),
+                                         kf(idle_len * 0.8, [4, -5, 0]), kf(idle_len, [0, 0, 0]))},
+            'head': {'rotation': channel(kf(0, [0, 0, 0]), kf(idle_len * 0.55, [10, 0, 3]), kf(idle_len, [0, 0, 0]))},
+            'bell': {'rotation': channel(kf(0, [0, 0, 4]), kf(idle_len * 0.3, [0, 0, -5]), kf(idle_len * 0.6, [0, 0, 4]),
+                                         kf(idle_len, [0, 0, 4]))},
+            'tail': {'rotation': channel(kf(0, [10, 0, 0]), kf(idle_len * 0.1, [10, 0, 18]), kf(idle_len * 0.2, [10, 0, -14]),
+                                         kf(idle_len * 0.3, [10, 0, 0]), kf(idle_len, [10, 0, 0]))},
+        }},
+        # Diagonal pairs (front-right with hind-left), a bobbing head and a swinging bell.
+        a + 'walk': {'loop': True, 'animation_length': walk_len, 'bones': {
+            'front_right_leg': {'rotation': channel(kf(0, [-26, 0, 0]), kf(walk_len / 2, [24, 0, 0]), kf(walk_len, [-26, 0, 0]))},
+            'hind_left_leg': {'rotation': channel(kf(0, [-24, 0, 0]), kf(walk_len / 2, [22, 0, 0]), kf(walk_len, [-24, 0, 0]))},
+            'front_left_leg': {'rotation': channel(kf(0, [24, 0, 0]), kf(walk_len / 2, [-26, 0, 0]), kf(walk_len, [24, 0, 0]))},
+            'hind_right_leg': {'rotation': channel(kf(0, [22, 0, 0]), kf(walk_len / 2, [-24, 0, 0]), kf(walk_len, [22, 0, 0]))},
+            'front_right_shin': {'rotation': channel(kf(0, [0, 0, 0]), kf(walk_len * 0.75, [-30, 0, 0]), kf(walk_len, [0, 0, 0]))},
+            'front_left_shin': {'rotation': channel(kf(0, [0, 0, 0]), kf(walk_len * 0.25, [-30, 0, 0]), kf(walk_len / 2, [0, 0, 0]),
+                                                    kf(walk_len, [0, 0, 0]))},
+            'body': {'position': channel(kf(0, [0, 0, 0]), kf(walk_len / 4, [0, 0.5, 0]), kf(walk_len / 2, [0, 0, 0]),
+                                         kf(walk_len * 0.75, [0, 0.5, 0]), kf(walk_len, [0, 0, 0])),
+                     'rotation': channel(kf(0, [0, 0, 2]), kf(walk_len / 2, [0, 0, -2]), kf(walk_len, [0, 0, 2]))},
+            'neck': {'rotation': channel(kf(0, [4, 0, 0]), kf(walk_len / 4, [10, 0, 0]), kf(walk_len / 2, [4, 0, 0]),
+                                         kf(walk_len * 0.75, [10, 0, 0]), kf(walk_len, [4, 0, 0]))},
+            'bell': {'rotation': channel(kf(0, [12, 0, 6]), kf(walk_len / 2, [-10, 0, -6]), kf(walk_len, [12, 0, 6]))},
+            'tail': {'rotation': channel(kf(0, [14, 0, 6]), kf(walk_len / 2, [14, 0, -6]), kf(walk_len, [14, 0, 6]))},
+        }},
+        # Knees buckle, the ram drops and rolls onto its side; the bell gives a last swing.
+        a + 'death': {'loop': 'hold_on_last_frame', 'animation_length': 1.5, 'bones': {
+            'root': {'rotation': channel(kf(0, [0, 0, 0]), kf(0.35, [6, 0, 0], 'easeOutQuad'), kf(0.9, [4, 0, 84], 'easeInCubic'),
+                                         kf(1.1, [4, 0, 78], 'easeOutQuad'), kf(1.5, [4, 0, 82])),
+                     'position': channel(kf(0, [0, 0, 0]), kf(0.35, [0, -3, 0], 'easeOutQuad'), kf(0.9, [3, -4, 0], 'easeInCubic'),
+                                         kf(1.5, [3, -4, 0]))},
+            'front_right_shin': {'rotation': channel(kf(0, [0, 0, 0]), kf(0.35, [-70, 0, 0], 'easeOutQuad'), kf(1.5, [-20, 0, 0]))},
+            'front_left_shin': {'rotation': channel(kf(0, [0, 0, 0]), kf(0.35, [-65, 0, 0], 'easeOutQuad'), kf(1.5, [-15, 0, 0]))},
+            'hind_right_shin': {'rotation': channel(kf(0, [0, 0, 0]), kf(0.4, [60, 0, 0], 'easeOutQuad'), kf(1.5, [20, 0, 0]))},
+            'hind_left_shin': {'rotation': channel(kf(0, [0, 0, 0]), kf(0.4, [55, 0, 0], 'easeOutQuad'), kf(1.5, [15, 0, 0]))},
+            'front_right_leg': {'rotation': channel(kf(0, [0, 0, 0]), kf(0.9, [-20, 0, 0]), kf(1.5, [-30, 0, 0]))},
+            'hind_right_leg': {'rotation': channel(kf(0, [0, 0, 0]), kf(0.9, [20, 0, 0]), kf(1.5, [30, 0, 0]))},
+            'neck': {'rotation': channel(kf(0, [0, 0, 0]), kf(0.35, [-20, 0, 0], 'easeOutQuad'), kf(0.9, [20, 0, 0]),
+                                         kf(1.5, [30, 10, 0]))},
+            'bell': {'rotation': channel(kf(0, [0, 0, 0]), kf(0.9, [0, 0, 30]), kf(1.2, [0, 0, -20]), kf(1.5, [0, 0, 5]))},
+        }},
+    }}
+
+
 def write_json(rel, obj):
     path = os.path.join(ROOT, rel)
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -350,6 +499,10 @@ def main():
         os.makedirs(os.path.dirname(path), exist_ok=True)
         tex.save(path)
         write_json('animations/entity/%s.animation.json' % model.name, hollowed_animations(heavy))
+    ram = tolling_ram()
+    write_json('geo/entity/tolling_ram.geo.json', ram.geo())
+    ram.texture(17).save(os.path.join(ROOT, 'textures', 'entity', 'tolling_ram.png'))
+    write_json('animations/entity/tolling_ram.animation.json', ram_animations())
     print('ok')
 
 

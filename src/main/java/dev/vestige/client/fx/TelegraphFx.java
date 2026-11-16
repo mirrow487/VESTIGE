@@ -144,11 +144,12 @@ public final class TelegraphFx {
         vertex(vc, pose, r, -r, 1, 0, red, g, b, a);
     }
 
+    /** A flat strip; samples the ring texture's bright rim (its centre is nearly transparent). */
     private static void rect(VertexConsumer vc, PoseStack.Pose pose, float halfWidth, float length, int red, int g, int b, int a) {
-        vertex(vc, pose, -halfWidth, 0, 0.45f, 0.45f, red, g, b, a);
-        vertex(vc, pose, -halfWidth, length, 0.45f, 0.55f, red, g, b, a);
-        vertex(vc, pose, halfWidth, length, 0.55f, 0.55f, red, g, b, a);
-        vertex(vc, pose, halfWidth, 0, 0.55f, 0.45f, red, g, b, a);
+        vertex(vc, pose, -halfWidth, 0, 0.93f, 0.49f, red, g, b, a);
+        vertex(vc, pose, -halfWidth, length, 0.93f, 0.51f, red, g, b, a);
+        vertex(vc, pose, halfWidth, length, 0.95f, 0.51f, red, g, b, a);
+        vertex(vc, pose, halfWidth, 0, 0.95f, 0.49f, red, g, b, a);
     }
 
     private static void vertex(VertexConsumer vc, PoseStack.Pose pose, float x, float z, float u, float v, int r, int g, int b, int a) {

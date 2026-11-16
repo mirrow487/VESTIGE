@@ -1,0 +1,9 @@
+{
+  "items": [
+    "vestige:timber_bulwark"
+  ],
+  "kind": "bulwark",
+  "absorption": 1.0,
+  "stability": 78,
+  "weight": 9.0
+}

@@ -73,4 +73,32 @@ class HitGeometryTest {
         double[] ahead90 = HitGeometry.toLocal(-3, 0, 90);
         assertEquals(3.0, ahead90[0], 1e-9);
     }
+
+    @Test
+    void ringExpandsOverActiveTicksAndHitsAllAround() {
+        // reach 5 over 10 ticks, thickness 1: a target 3 blocks away (any direction) is hit around tick 5 only.
+        for (double[] dir : new double[][] {{3, 0}, {-3, 0}, {0, 3}, {0, -3}}) {
+            Target t = new Target(dir[0], dir[1], 0.3, 0.0, 1.95);
+            assertFalse(HitGeometry.ring(t, 5, 1, 0, 2, 10, -0.5, 0.6), "ring has not reached it yet");
+            assertTrue(HitGeometry.ring(t, 5, 1, 0, 5, 10, -0.5, 0.6), "ring front passes it");
+            assertFalse(HitGeometry.ring(t, 5, 1, 0, 9, 10, -0.5, 0.6), "ring has passed it");
+        }
+    }
+
+    @Test
+    void ringCoversEveryDistanceAndCanBeJumped() {
+        // Every distance from 0 to reach is inside the band on some tick (no gaps between ticks).
+        for (double d = 0.0; d <= 5.0; d += 0.1) {
+            boolean hit = false;
+            for (int i = 0; i < 10; i++) {
+                hit |= HitGeometry.ring(new Target(d, 0, 0.0, 0.0, 1.95), 5, 1, 0, i, 10, -0.5, 0.6);
+            }
+            assertTrue(hit, "gap at distance " + d);
+        }
+        // Feet 1.2 blocks up clear a ring that is 0.6 high.
+        Target jumping = new Target(3, 0, 0.3, 1.2, 3.0);
+        for (int i = 0; i < 10; i++) {
+            assertFalse(HitGeometry.ring(jumping, 5, 1, 0, i, 10, -0.5, 0.6));
+        }
+    }
 }

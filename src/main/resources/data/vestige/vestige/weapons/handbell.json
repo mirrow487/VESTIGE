@@ -1,0 +1,10 @@
+{
+  "items": [
+    "vestige:handbell"
+  ],
+  "class": "bell",
+  "moveset": "vestige:bell",
+  "attack_rating": 60,
+  "poise_damage": 1.0,
+  "weight": 2.0
+}

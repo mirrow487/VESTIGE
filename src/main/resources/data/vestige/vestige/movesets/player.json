@@ -128,6 +128,30 @@
         "guard": true
       }
     },
+    "guard_bulwark": {
+      "timing": {
+        "windup": 5,
+        "active": 1,
+        "recovery": 7,
+        "combo_window": 0.0,
+        "cancel_window": 0.0,
+        "hitstop": 0
+      },
+      "power": {
+        "stamina": 0,
+        "motion_value": 1.0,
+        "poise_damage": 0,
+        "damage": 0
+      },
+      "pose": "guard_bulwark",
+      "charge": {
+        "max_ticks": 6000,
+        "motion_bonus": 0
+      },
+      "defense": {
+        "guard": true
+      }
+    },
     "parry_buckler": {
       "timing": {
         "windup": 2,

@@ -61,6 +61,10 @@ public final class DevDriver {
             buildAnimScenario();
         } else if (scenario.equals("depth")) {
             buildDepthScenario();
+        } else if (scenario.equals("arsenal")) {
+            buildArsenalScenario();
+        } else if (scenario.equals("ram")) {
+            buildRamScenario();
         } else if (scenario.equals("items")) {
             buildItemsScenario();
         } else if (scenario.equals("models")) {
@@ -422,9 +426,15 @@ public final class DevDriver {
 
     /** Views the scene from a marker armor stand placed beside the player (the player is then rendered). */
     private static void sideCamera(double dx, double dz, float yaw) {
+        camAt(dx, 1.15, dz, yaw, 8f);
+    }
+
+    /** A camera at an offset from the player (marker armor stand), looking along yaw/pitch. */
+    private static void camAt(double dx, double dy, double dz, float yaw, float pitch) {
+        command("kill @e[type=armor_stand,tag=cam]");
         command(String.format(java.util.Locale.ROOT,
-                "execute at @p run summon armor_stand ~%.2f ~1.15 ~%.2f {Marker:1b,Invisible:1b,NoGravity:1b,Tags:[\"cam\"],Rotation:[%.1ff,8f]}",
-                dx, dz, yaw));
+                "execute at @p run summon armor_stand ~%.2f ~%.2f ~%.2f {Marker:1b,Invisible:1b,NoGravity:1b,Tags:[\"cam\"],Rotation:[%.1ff,%.1ff]}",
+                dx, dy, dz, yaw, pitch));
         waitUntil("camera stand visible", 60, () -> nearest(net.minecraft.world.entity.EntityType.ARMOR_STAND) != null);
         run(() -> {
             mc().options.setCameraType(CameraType.FIRST_PERSON);
@@ -538,6 +548,208 @@ public final class DevDriver {
         wait(10);
         shot("i_inventory");
         run(() -> mc().setScreen(null));
+        run(() -> {
+            VestigeIds.LOG.info("DRIVER DONE checks={} failures={} {}", checks, FAILURES.size(), FAILURES);
+            quitSoon = 40;
+        });
+    }
+
+    private static int count(net.minecraft.world.entity.EntityType<?> type) {
+        var p = mc().player;
+        return p.level().getEntities(p, p.getBoundingBox().inflate(24), e -> e.getType() == type).size();
+    }
+
+    private static int ringsBefore;
+    private static int wakesBefore;
+    private static float dummyHealthBefore;
+
+    /**
+     * M4 stage 2 weapon classes in the real client: every class from the side at its windup peak and
+     * strike, its art, first person, the drawn bow, the Bell's rings, the Censer's cloud, the
+     * Greatblade's wake, the Fang's Quickstep, and the kite and tower shields.
+     */
+    private static void buildArsenalScenario() {
+        setup();
+        command("difficulty normal");
+        command("tick rate 6");
+        command("item replace entity @p inventory.0 with minecraft:arrow 64");
+        // {item, class, light windup, art windup}
+        String[][] weapons = {{"taper_fang", "fang", "3", "0"}, {"wickiron_greatblade", "greatblade", "12", "18"},
+                {"chandlers_censer", "censer", "8", "10"}, {"hunting_bow", "bow", "8", "16"}, {"handbell", "bell", "7", "12"}};
+        for (String[] w : weapons) {
+            int lw = Integer.parseInt(w[2]);
+            int aw = Integer.parseInt(w[3]);
+            command("item replace entity @p weapon.mainhand with vestige:" + w[0]);
+            waitUntil("armed with " + w[0], 60, ClientCombat::armed);
+            sideCamera(-3.6, 0.3, -90f);
+            shot("a_" + w[1] + "_0_idle_side");
+            press(CombatInput.LIGHT, Float.NaN);
+            shotAt("a_" + w[1] + "_1_light_peak", Math.max(0, lw - 1));
+            shotAt("a_" + w[1] + "_2_light_strike", lw + 1);
+            wait(40);
+            onServerPlayer(sp -> dev.vestige.combat.resonance.ResonanceService.set(sp, 100f));
+            wait(4);
+            run(() -> {
+                ringsBefore = dev.vestige.client.fx.ActionFx.ringsShown;
+                wakesBefore = dev.vestige.client.fx.ActionFx.wakesShown;
+            });
+            if (w[1].equals("bell") || w[1].equals("censer") || w[1].equals("greatblade")) {
+                camAt(-3.4, 3.4, -2.6, -52f, 40f);  // high and behind-right, to see the ground effects
+            }
+            press(CombatInput.ART, w[1].equals("fang") ? 90f : Float.NaN);
+            shotAt("a_" + w[1] + "_3_art_peak", Math.max(1, aw - 1));
+            shotAt("a_" + w[1] + "_4_art_active", aw + 3);
+            if (w[1].equals("censer")) {
+                waitUntil("incense cloud exists", 60, () -> count(dev.vestige.combat.CombatModule.INCENSE_CLOUD.get()) > 0);
+                wait(20);
+                shot("a_censer_5_incense_cloud");
+                check("incense cloud spawned", () -> count(dev.vestige.combat.CombatModule.INCENSE_CLOUD.get()) > 0, "no cloud");
+            }
+            if (w[1].equals("bell")) {
+                check("toll ring drawn", () -> dev.vestige.client.fx.ActionFx.ringsShown > ringsBefore, "no ring shown");
+            }
+            if (w[1].equals("greatblade")) {
+                check("cleaving wake drawn", () -> dev.vestige.client.fx.ActionFx.wakesShown > wakesBefore, "no wake shown");
+            }
+            wait(60);
+            playerCamera();
+            camera(CameraType.FIRST_PERSON);
+            press(CombatInput.LIGHT, Float.NaN);
+            shotAt("a_" + w[1] + "_6_firstperson", lw + 1);
+            wait(40);
+            recenter();
+        }
+        // Bell heavy toll (charged) from above: the expanding ring.
+        command("item replace entity @p weapon.mainhand with vestige:handbell");
+        wait(4);
+        camAt(-4.5, 4.5, -3.5, -52f, 42f);
+        run(() -> ringsBefore = dev.vestige.client.fx.ActionFx.ringsShown);
+        press(CombatInput.HEAVY_PRESS, Float.NaN);
+        wait(4);
+        press(CombatInput.HEAVY_RELEASE, Float.NaN);
+        shotAt("a_bell_7_toll_ring", 17);
+        check("heavy toll ring drawn", () -> dev.vestige.client.fx.ActionFx.ringsShown > ringsBefore, "no ring shown");
+        wait(40);
+        // Bow: hold a full draw (drawn model), side and first person, then loose at a dummy 9 blocks out.
+        playerCamera();
+        command("execute at @p rotated 0 0 run summon vestige:hollowed ^ ^ ^9 {NoAI:1b,Rotation:[180f,0f]}");
+        command("item replace entity @p weapon.mainhand with vestige:hunting_bow");
+        waitUntil("bow armed and dummy visible", 80, () -> ClientCombat.armed() && nearest(EntityModule.HOLLOWED.get()) != null);
+        run(() -> dummyHealthBefore = health(nearest(EntityModule.HOLLOWED.get())));
+        lockOnto(EntityModule.HOLLOWED);
+        sideCamera(-3.6, 0.3, -90f);
+        press(CombatInput.HEAVY_PRESS, Float.NaN);
+        waitUntil("bow fully drawn", 60, () -> mine() != null && mine().holding());
+        wait(4);
+        check("drawn bow model engaged", () -> dev.vestige.client.VestigeClient.drawProgress(mc().player) >= 0.5f,
+                () -> "draw " + dev.vestige.client.VestigeClient.drawProgress(mc().player));
+        shot("a_bow_8_full_draw_side");
+        playerCamera();
+        camera(CameraType.FIRST_PERSON);
+        shot("a_bow_9_full_draw_firstperson");
+        press(CombatInput.HEAVY_RELEASE, Float.NaN);
+        waitUntil("arrow loosed", 40, () -> count(dev.vestige.combat.CombatModule.COMBAT_ARROW.get()) > 0);
+        shot("a_bow_10_arrow_flight");
+        waitUntil("arrow hit the dummy", 80, () -> health(nearest(EntityModule.HOLLOWED.get())) < dummyHealthBefore);
+        check("aimed shot damaged the dummy", () -> health(nearest(EntityModule.HOLLOWED.get())) < dummyHealthBefore,
+                () -> "health " + health(nearest(EntityModule.HOLLOWED.get())));
+        command("kill @e[type=vestige:hollowed]");
+        // Shields: kite and tower guards.
+        command("item replace entity @p weapon.mainhand with vestige:keepsake_blade");
+        for (String shield : new String[] {"iron_kite_shield", "timber_bulwark"}) {
+            command("item replace entity @p weapon.offhand with vestige:" + shield);
+            wait(4);
+            camera(CameraType.THIRD_PERSON_FRONT);
+            shot("a_" + shield + "_0_idle_front");
+            press(CombatInput.GUARD_PRESS, Float.NaN);
+            waitUntil("guard raised", 40, () -> mine() != null && mine().guarding());
+            wait(4);
+            shot("a_" + shield + "_1_guard_front");
+            sideCamera(3.6, 0.3, 90f);
+            shot("a_" + shield + "_2_guard_side");
+            playerCamera();
+            camera(CameraType.FIRST_PERSON);
+            shot("a_" + shield + "_3_guard_firstperson");
+            press(CombatInput.GUARD_RELEASE, Float.NaN);
+            wait(10);
+        }
+        command("tick rate 20");
+        run(() -> {
+            VestigeIds.LOG.info("DRIVER DONE checks={} failures={} {}", checks, FAILURES.size(), FAILURES);
+            quitSoon = 40;
+        });
+    }
+
+    /**
+     * The Tolling Ram: model and frozen poses from the side, its death, then a live fight where the
+     * player reads the charge telegraph and rolls sideways out of the line (its lesson, GDD §18.1).
+     */
+    private static void buildRamScenario() {
+        setup();
+        command("difficulty normal");
+        command("time set 6000");
+        command("execute at @p rotated 0 0 run summon vestige:tolling_ram ^ ^ ^5 {NoAI:1b,Rotation:[180f,0f]}");
+        run(() -> mc().options.hideGui = true);
+        camera(CameraType.FIRST_PERSON);
+        waitUntil("ram visible", 100, () -> nearest(EntityModule.TOLLING_RAM.get()) != null);
+        wait(30);
+        shot("r_front_idle");
+        command("execute as @e[type=vestige:tolling_ram] at @s run tp @s ~ ~ ~ 90 0");
+        wait(10);
+        shot("r_side_idle");
+        String[][] poses = {{"butt_charge", "3", "1_scrape"}, {"butt_charge", "18", "2_charge_peak"}, {"butt_charge", "21", "3_gallop_a"},
+                {"butt_charge", "24", "4_gallop_b"}, {"butt_charge", "35", "5_skid"}, {"butt_charge", "42", "6_head_shake"},
+                {"toll_ring", "15", "7_toll_rear"}, {"toll_ring", "17", "8_toll_slam"}, {"toll_ring", "20", "9_toll_ring"},
+                {"headbutt", "9", "10_headbutt_rear"}, {"headbutt", "13", "11_headbutt_strike"}, {"stagger", "14", "12_stagger"},
+                {"parried", "6", "13_parried"}, {"riposted", "25", "14_riposted"}};
+        for (String[] pose : poses) {
+            freeze(EntityModule.TOLLING_RAM, "vestige:tolling_ram#" + pose[0], Integer.parseInt(pose[1]));
+            shot("r_side_" + pose[2]);
+            unfreeze();
+        }
+        command("execute as @e[type=vestige:tolling_ram] at @s run tp @s ~ ~ ~ 140 0");
+        wait(6);
+        freeze(EntityModule.TOLLING_RAM, "vestige:tolling_ram#butt_charge", 18);
+        shot("r_three_quarter_charge_peak");
+        unfreeze();
+        command("kill @e[type=vestige:tolling_ram]");
+        wait(14);
+        shot("r_side_15_death_mid");
+        wait(16);
+        shot("r_side_16_death_end");
+        run(() -> mc().options.hideGui = false);
+        // Live: the ram charges; the player reads the telegraph and rolls sideways.
+        recenter();
+        command("kill @e[type=item]");
+        command("clear @p");
+        selectSlot0();
+        command("item replace entity @p weapon.mainhand with vestige:keepsake_blade");
+        command("execute at @p rotated 0 0 run summon vestige:tolling_ram ^ ^ ^8 {Rotation:[180f,0f]}");
+        camera(CameraType.THIRD_PERSON_BACK);
+        lockOnto(EntityModule.TOLLING_RAM);
+        command("tick rate 8");
+        waitUntil("ram starts its charge", 400, () -> {
+            RunningAction a = actionOf(EntityModule.TOLLING_RAM.get());
+            return a != null && a.ref.action().equals("butt_charge") && a.elapsed() >= 12;
+        });
+        run(() -> remembered[0] = mc().player.getHealth());
+        shot("r_live_1_charge_telegraph");
+        waitUntil("charge about to run", 20, () -> {
+            RunningAction a = actionOf(EntityModule.TOLLING_RAM.get());
+            return a == null || a.elapsed() >= 17;
+        });
+        press(CombatInput.ROLL, 90f);
+        wait(3);
+        shot("r_live_2_roll_aside");
+        waitUntil("charge over", 60, () -> {
+            RunningAction a = actionOf(EntityModule.TOLLING_RAM.get());
+            return a == null || !a.ref.action().equals("butt_charge") || a.elapsed() >= 33;
+        });
+        shot("r_live_3_charge_passed");
+        check("rolled sideways out of the charge", () -> mc().player.getHealth() >= remembered[0],
+                () -> "took " + (remembered[0] - mc().player.getHealth()));
+        command("tick rate 20");
+        command("kill @e[type=vestige:tolling_ram]");
         run(() -> {
             VestigeIds.LOG.info("DRIVER DONE checks={} failures={} {}", checks, FAILURES.size(), FAILURES);
             quitSoon = 40;

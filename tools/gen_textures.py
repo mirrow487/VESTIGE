@@ -127,6 +127,154 @@ def plank_buckler():
     save(img, 'item/plank_buckler.png')
 
 
+WAX = (232, 222, 196, 255)
+WICK = (52, 40, 30, 255)
+BRONZE = (184, 128, 64, 255)
+BRONZE_LO = (122, 80, 38, 255)
+IRON = (78, 80, 92, 255)
+IRON_LO = (56, 57, 66, 255)
+STRING = (222, 214, 190, 255)
+
+
+def diag(img, x0, x1, colors):
+    """Paints along the x + y = 15 diagonal, colors cycled per step."""
+    for i, x in enumerate(range(x0, x1)):
+        px(img, x, 15 - x, colors[i % len(colors)])
+
+
+def taper_fang():
+    img = Image.new('RGBA', (16, 16), (0, 0, 0, 0))
+    for x in range(7, 13):
+        px(img, x, 15 - x, STEEL_HI)
+        px(img, x, 16 - x, STEEL)
+    px(img, 13, 2, STEEL_HI)
+    for i in range(-1, 2):
+        px(img, 6 + i, 9 + i, WAX)
+    px(img, 5, 9, WAX)
+    px(img, 5, 10, WAX)
+    px(img, 4, 11, LEATHER)
+    px(img, 3, 12, LEATHER)
+    px(img, 2, 13, WAX)
+    px(img, 1, 14, EMBER)
+    outline(img)
+    save(img, 'item/taper_fang.png')
+
+
+def wickiron_greatblade():
+    img = Image.new('RGBA', (16, 16), (0, 0, 0, 0))
+    for x in range(5, 15):
+        y = 15 - x
+        px(img, x, y, STEEL_HI)
+        px(img, x - 1, y, IRON)
+        px(img, x, y + 1, IRON)
+        px(img, x - 1, y + 1, WICK if 6 < x < 13 else IRON_LO)
+    px(img, 15, 0, STEEL_HI)
+    for i in range(-3, 4):
+        px(img, 4 + i, 11 + i, IRON_LO if abs(i) < 3 else IRON)
+    px(img, 4, 11, EMBER)
+    px(img, 3, 12, LEATHER)
+    px(img, 2, 13, WICK)
+    px(img, 1, 14, BRASS)
+    outline(img)
+    save(img, 'item/wickiron_greatblade.png')
+
+
+def chandlers_censer():
+    img = Image.new('RGBA', (16, 16), (0, 0, 0, 0))
+    diag(img, 1, 5, [BRASS, LEATHER, LEATHER, WOOD])
+    px(img, 5, 10, BRASS)
+    for x, y in [(6, 9), (7, 8), (8, 7)]:
+        px(img, x, y, STEEL if (x % 2) else IRON_LO)
+    for y in range(1, 11):
+        for x in range(7, 16):
+            d = ((x - 11.0) ** 2 + (y - 5.5) ** 2) ** 0.5
+            if d <= 3.6:
+                c = BRASS if d < 2.9 else BRASS_LO
+                if (x, y) in ((10, 5), (12, 5), (11, 7), (10, 3), (12, 3)):
+                    c = EMBER
+                px(img, x, y, c)
+    px(img, 13, 1, BRASS_LO)
+    outline(img)
+    save(img, 'item/chandlers_censer.png')
+
+
+def hunting_bow():
+    img = Image.new('RGBA', (16, 16), (0, 0, 0, 0))
+    # Limb arc from bottom-left to top-right, bulging toward the top-left; the string on the diagonal.
+    limb = [(1, 14), (1, 13), (2, 12), (2, 11), (2, 10), (3, 9), (3, 8), (4, 7), (5, 6), (6, 5), (7, 4), (8, 3), (9, 3), (10, 2),
+            (11, 2), (12, 2), (13, 1), (14, 1)]
+    for i, (x, y) in enumerate(limb):
+        px(img, x, y, WOOD if i % 3 else WOOD_LO)
+    for (x, y) in [(3, 7), (4, 6), (4, 7)]:
+        px(img, x, y, LEATHER)
+    for x in range(2, 14):
+        px(img, x, 16 - x, STRING)
+    outline(img)
+    save(img, 'item/hunting_bow.png')
+
+
+def handbell():
+    img = Image.new('RGBA', (16, 16), (0, 0, 0, 0))
+    px(img, 7, 0, BRASS)
+    px(img, 8, 0, BRASS)
+    for y in range(1, 6):
+        px(img, 7, y, WOOD if y % 2 else LEATHER)
+        px(img, 8, y, WOOD_LO if y % 2 else LEATHER)
+    for x in range(6, 10):
+        px(img, x, 6, BRASS)
+    widths = {7: 4, 8: 6, 9: 6, 10: 6, 11: 8, 12: 8, 13: 10}
+    for y, w in widths.items():
+        x0 = 8 - w // 2
+        for x in range(x0, x0 + w):
+            c = BRONZE if x > x0 else BRONZE_LO
+            if y == 10:
+                c = BRONZE_LO
+            if x == x0 + w - 2 and y < 12:
+                c = (230, 176, 110, 255)
+            px(img, x, y, c)
+    px(img, 7, 14, IRON_LO)
+    px(img, 8, 14, IRON_LO)
+    outline(img)
+    save(img, 'item/handbell.png')
+
+
+def iron_kite_shield():
+    img = Image.new('RGBA', (16, 16), (0, 0, 0, 0))
+    for y in range(1, 15):
+        half = 6 if y < 6 else max(1, 6 - (y - 5) * 0.62)
+        for x in range(16):
+            if abs(x - 7.5) <= half:
+                c = STEEL if abs(x - 7.5) < half - 1 else STEEL_HI
+                if y == 1:
+                    c = STEEL_HI
+                px(img, x, y, c)
+    for y in range(5, 9):
+        for x in range(7, 9):
+            px(img, x, y, BRASS)
+    px(img, 7, 4, EMBER)
+    px(img, 8, 4, EMBER)
+    outline(img)
+    save(img, 'item/iron_kite_shield.png')
+
+
+def timber_bulwark():
+    img = Image.new('RGBA', (16, 16), (0, 0, 0, 0))
+    for y in range(0, 16):
+        for x in range(3, 13):
+            c = WOOD if (x // 2) % 2 else (150, 112, 70, 255)
+            if x in (3, 12):
+                c = IRON_LO
+            if y in (2, 8, 13):
+                c = IRON
+            px(img, x, y, c)
+    for x in range(5, 11):
+        px(img, x, 4, WICK)
+    px(img, 7, 10, STEEL_HI)
+    px(img, 8, 10, STEEL_HI)
+    outline(img)
+    save(img, 'item/timber_bulwark.png')
+
+
 def humanoid_skin(path, skin, skin_dark, cloth, cloth_dark, accent, eye_glow, seed):
     """64x32 humanoid layout (HumanoidModel.createMesh, mirrored left limbs)."""
     rnd = random.Random(seed)
@@ -240,6 +388,13 @@ keepsake_blade()
 ash_pike()
 hand_maul()
 plank_buckler()
+taper_fang()
+wickiron_greatblade()
+chandlers_censer()
+hunting_bow()
+handbell()
+iron_kite_shield()
+timber_bulwark()
 # Hollowed and Brute skins are painted by tools/gen_models.py (GeckoLib models).
 star('particle/glint_white.png', (235, 240, 255))
 star('particle/glint_red.png', (230, 40, 30))

@@ -40,6 +40,23 @@ public final class CombatModule implements VestigeModule {
     public static final Supplier<net.minecraft.core.particles.SimpleParticleType> GLINT_RED =
             PARTICLES.register("glint_red", () -> new net.minecraft.core.particles.SimpleParticleType(true));
 
+    private static final DeferredRegister<net.minecraft.world.entity.EntityType<?>> ENTITY_TYPES =
+            DeferredRegister.create(net.minecraft.core.registries.Registries.ENTITY_TYPE, VestigeIds.MOD_ID);
+
+    /** Arrow loosed by a VESTIGE bow action (damage through the combat pipeline). */
+    public static final Supplier<net.minecraft.world.entity.EntityType<dev.vestige.combat.projectile.CombatArrow>> COMBAT_ARROW =
+            ENTITY_TYPES.register("combat_arrow", () -> net.minecraft.world.entity.EntityType.Builder
+                    .<dev.vestige.combat.projectile.CombatArrow>of(dev.vestige.combat.projectile.CombatArrow::new,
+                            net.minecraft.world.entity.MobCategory.MISC)
+                    .sized(0.5f, 0.5f).eyeHeight(0.13f).clientTrackingRange(4).updateInterval(20).build("combat_arrow"));
+
+    /** Censer incense cloud (Smolder Wake). */
+    public static final Supplier<net.minecraft.world.entity.EntityType<dev.vestige.combat.projectile.IncenseCloud>> INCENSE_CLOUD =
+            ENTITY_TYPES.register("incense_cloud", () -> net.minecraft.world.entity.EntityType.Builder
+                    .<dev.vestige.combat.projectile.IncenseCloud>of(dev.vestige.combat.projectile.IncenseCloud::new,
+                            net.minecraft.world.entity.MobCategory.MISC)
+                    .sized(1f, 0.5f).clientTrackingRange(6).updateInterval(10).fireImmune().build("incense_cloud"));
+
     @Override
     public String id() {
         return "combat";
@@ -49,6 +66,7 @@ public final class CombatModule implements VestigeModule {
     public void init(IEventBus modBus, IEventBus gameBus) {
         ATTACHMENTS.register(modBus);
         PARTICLES.register(modBus);
+        ENTITY_TYPES.register(modBus);
         CombatData.MOVESETS.register(modBus, gameBus);
         modBus.addListener(CombatNetwork::register);
         gameBus.addListener(CombatModule::onPlayerTick);

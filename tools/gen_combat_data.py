@@ -22,7 +22,7 @@ def write(path, obj):
 
 def action(windup, active, recovery, pose, *, stamina=0, mv=1.0, poise=0, damage=0, hit=None, motion=None,
            telegraph=None, hyperarmor=False, charge=None, dodge=None, tracking=30, stagger=0,
-           combo=0.4, cancel=0.4, hitstop=3, guard=False, parry=None, invulnerable=False, art=None):
+           combo=0.4, cancel=0.4, hitstop=3, guard=False, parry=None, invulnerable=False, art=None, effects=None):
     a = {
         'timing': {'windup': windup, 'active': active, 'recovery': recovery,
                    'combo_window': combo, 'cancel_window': cancel, 'hitstop': hitstop},
@@ -56,6 +56,8 @@ def action(windup, active, recovery, pose, *, stamina=0, mv=1.0, poise=0, damage
         a['defense'] = defense
     if art:
         a['art'] = art
+    if effects:
+        a['effects'] = effects
     return a
 
 
@@ -74,6 +76,11 @@ def thrust(reach, radius=0.45, y_min=0.2, y_max=2.0):
 
 def circle(radius, offset, y_max=1.6):
     return {'type': 'circle', 'radius': radius, 'offset': offset, 'y_min': -0.5, 'y_max': y_max}
+
+
+def ring(reach, thickness, offset=0.0, y_max=0.6):
+    # Expanding band; a low y_max means it can be jumped (GDD §17 Toll Ring).
+    return {'type': 'ring', 'reach': reach, 'radius': thickness, 'offset': offset, 'y_min': -0.5, 'y_max': y_max}
 
 
 def moveset(actions, light=None, heavy=None, running=None, rolling=None, art=None, riposte=None):
@@ -105,6 +112,7 @@ write('vestige/vestige/movesets/player.json', moveset({
     # GDD §7.7. Guards hold at their peak while the button is held; a buckler parries instead.
     'guard_weapon': action(4, 1, 6, 'guard_weapon', guard=True, charge=HOLD, combo=0.0, cancel=0.0, hitstop=0),
     'guard_shield': action(3, 1, 5, 'guard_shield', guard=True, charge=HOLD, combo=0.0, cancel=0.0, hitstop=0),
+    'guard_bulwark': action(5, 1, 7, 'guard_bulwark', guard=True, charge=HOLD, combo=0.0, cancel=0.0, hitstop=0),
     # 4-tick parry window starting on tick 2 (GDD §7.7); a committed recovery if it whiffs.
     'parry_buckler': action(2, 4, 12, 'parry_buckler', stamina=8, parry=(2, 6), combo=0.5, cancel=0.5, hitstop=0),
     'guard_break': action(0, 0, 24, 'guard_break', hitstop=0),
@@ -164,6 +172,85 @@ write('vestige/vestige/movesets/maul.json', moveset({
 }, light=['light_1', 'light_2'], heavy='heavy', running='running', rolling='rolling',
    art='tremor', riposte='riposte'))
 
+
+# ---------------------------------------------------------------- fang (3/2/5, 8; heavy 7/3/9, 16; combo 5; MV 0.8 / 1.3 / 1.7; crit 3.5)
+write('vestige/vestige/movesets/fang.json', moveset({
+    'light_1': action(3, 2, 5, 'fang_slash_r', stamina=8, mv=0.8, poise=4, hit=arc(2.1, 55, -55), motion={'active': 0.12}, hitstop=2),
+    'light_2': action(3, 2, 5, 'fang_slash_l', stamina=8, mv=0.8, poise=4, hit=arc(2.1, -55, 55), motion={'active': 0.12}, hitstop=2),
+    'light_3': action(3, 2, 6, 'fang_stab', stamina=8, mv=0.85, poise=5, hit=thrust(2.4, 0.4), motion={'active': 0.2}, hitstop=2),
+    'light_4': action(3, 2, 5, 'fang_slash_r', stamina=8, mv=0.85, poise=5, hit=arc(2.1, 55, -55), motion={'active': 0.12}, hitstop=2),
+    'light_5': action(4, 4, 9, 'fang_spin', stamina=10, mv=1.0, poise=8, hit=arc(2.3, -170, 170), motion={'active': 0.08}, hitstop=3),
+    'heavy': action(7, 3, 9, 'fang_lunge', stamina=16, mv=1.3, poise=10, hit=thrust(2.9, 0.45), motion={'active': 0.4},
+                    hyperarmor=True, charge={'max_ticks': 10, 'motion_bonus': 0.4, 'poise_bonus': 5}, hitstop=4),
+    'running': action(4, 2, 8, 'fang_slide', stamina=10, mv=0.95, poise=6, hit=thrust(2.6, 0.45),
+                      motion={'windup': 0.3, 'active': 0.4}, hitstop=2),
+    'rolling': action(2, 2, 6, 'fang_slash_r', stamina=7, mv=0.75, poise=4, hit=arc(2.1, 55, -55), hitstop=2),
+    # Art: Quickstep (GDD §7.11). A short i-frame blink; the next hit within 1 s is a critical.
+    'quickstep': action(0, 6, 5, 'fang_quickstep', stamina=8, dodge={'iframe_start': 0, 'iframe_end': 6, 'distance': 3.2, 'move_ticks': 5},
+                        hitstop=0, art={'cost': 15}, effects={'keen': 20}),
+    'riposte': action(5, 3, 14, 'fang_riposte', mv=3.5, hit=thrust(2.4, 0.6), invulnerable=True, hitstop=8),
+}, light=['light_1', 'light_2', 'light_3', 'light_4', 'light_5'], heavy='heavy', running='running', rolling='rolling',
+   art='quickstep', riposte='riposte'))
+
+# ---------------------------------------------------------------- greatblade (12/4/14, 22; heavy 18/5/18, 36; MV 1.2 / 1.6 / 2.2; crit 2.8)
+write('vestige/vestige/movesets/greatblade.json', moveset({
+    'light_1': action(12, 4, 14, 'gb_sweep_r', stamina=22, mv=1.2, poise=22, hit=arc(3.3, 100, -80), motion={'active': 0.1}, hitstop=5),
+    'light_2': action(12, 4, 14, 'gb_sweep_l', stamina=22, mv=1.25, poise=22, hit=arc(3.3, -100, 80), motion={'active': 0.1}, hitstop=5),
+    'light_3': action(13, 4, 16, 'gb_overhead', stamina=24, mv=1.35, poise=30, hit=arc(3.4, 20, -15), motion={'active': 0.12}, hitstop=6),
+    'heavy': action(18, 5, 18, 'gb_heavy', stamina=36, mv=1.6, poise=40, hit=arc(3.5, 170, -170), hyperarmor=True,
+                    charge={'max_ticks': 16, 'motion_bonus': 0.6, 'poise_bonus': 20}, hitstop=7),
+    'running': action(12, 4, 15, 'gb_running', stamina=24, mv=1.3, poise=28, hit=arc(3.3, 25, -25),
+                      motion={'windup': 0.3, 'active': 0.15}, hitstop=6),
+    'rolling': action(10, 4, 14, 'gb_rolling', stamina=20, mv=1.1, poise=22, hit=arc(3.1, -30, 40), hitstop=5),
+    # Art: Cleaving Wake. An overhead slam; a shockwave runs 7 blocks along the ground ahead.
+    'cleaving_wake': action(18, 6, 18, 'gb_cleaving_wake', stamina=26, mv=1.5, poise=45, hit=thrust(7.0, 0.8, y_min=-0.5, y_max=1.4),
+                            hyperarmor=True, hitstop=6, art={'cost': 35}, effects={'fx': 'wake'}),
+    'riposte': action(10, 4, 18, 'gb_riposte', mv=2.8, hit=thrust(2.9, 0.6), invulnerable=True, hitstop=10),
+}, light=['light_1', 'light_2', 'light_3'], heavy='heavy', running='running', rolling='rolling',
+   art='cleaving_wake', riposte='riposte'))
+
+# ---------------------------------------------------------------- censer (8/5/10, 15; heavy 14/6/14, 28; MV 1.05 / 1.5 / 2.0; crit 2.8)
+write('vestige/vestige/movesets/censer.json', moveset({
+    'light_1': action(8, 5, 10, 'censer_swing_r', stamina=15, mv=1.05, poise=12, hit=arc(3.1, 110, -70), motion={'active': 0.06}),
+    'light_2': action(8, 5, 10, 'censer_swing_l', stamina=15, mv=1.05, poise=12, hit=arc(3.1, -110, 70), motion={'active': 0.06}),
+    'light_3': action(9, 4, 12, 'censer_overhead', stamina=16, mv=1.15, poise=16, hit=arc(3.2, 25, -25), motion={'active': 0.1}, hitstop=4),
+    'heavy': action(14, 6, 14, 'censer_spin', stamina=28, mv=1.5, poise=25, hit=circle(3.0, 0.0), hyperarmor=True,
+                    charge={'max_ticks': 12, 'motion_bonus': 0.5, 'poise_bonus': 10}, hitstop=4),
+    'running': action(8, 5, 11, 'censer_swing_r', stamina=16, mv=1.1, poise=13, hit=arc(3.1, 110, -70),
+                      motion={'windup': 0.25, 'active': 0.12}),
+    'rolling': action(6, 5, 10, 'censer_swing_l', stamina=13, mv=0.95, poise=11, hit=arc(3.0, -110, 70)),
+    # Art: Smolder Wake. A spin, then an incense cloud wider than the spin burns everything inside for 5 s.
+    'smolder_wake': action(10, 8, 14, 'censer_smolder', stamina=20, mv=1.2, poise=20, hit=circle(3.2, 0.0), hyperarmor=True, hitstop=3,
+                           art={'cost': 25}, effects={'cloud': {'radius': 4.0, 'duration': 100, 'interval': 10, 'motion_value': 0.18}}),
+    'riposte': action(9, 4, 16, 'censer_riposte', mv=2.8, hit=arc(2.7, 25, -25), invulnerable=True, hitstop=9),
+}, light=['light_1', 'light_2', 'light_3'], heavy='heavy', running='running', rolling='rolling',
+   art='smolder_wake', riposte='riposte'))
+
+# ---------------------------------------------------------------- longbow: arrows from the inventory; hold the heavy to draw
+write('vestige/vestige/movesets/longbow.json', moveset({
+    'quick_shot': action(8, 1, 7, 'bow_quick', stamina=10, mv=0.9, poise=6, hitstop=3,
+                         effects={'projectile': {'speed': 2.4}}),
+    'aimed_shot': action(14, 1, 9, 'bow_aimed', stamina=16, mv=1.0, poise=10, hitstop=4,
+                         charge={'max_ticks': 20, 'motion_bonus': 0.9, 'poise_bonus': 10},
+                         effects={'projectile': {'speed': 2.6, 'charge_speed': 0.45}}),
+    # Art: Pinning Shot. A braced full draw; the arrow roots the target for 2 s.
+    'pinning_shot': action(16, 1, 10, 'bow_pinning', stamina=14, mv=1.6, poise=20, stagger=40, hitstop=5,
+                           art={'cost': 25}, effects={'projectile': {'speed': 3.2}}),
+    'riposte': action(6, 3, 14, 'bow_riposte', mv=2.4, hit=arc(2.4, 40, -40), invulnerable=True, hitstop=8),
+}, light=['quick_shot'], heavy='aimed_shot', running='quick_shot', rolling='quick_shot',
+   art='pinning_shot', riposte='riposte'))
+
+# ---------------------------------------------------------------- bell (catalyst): Tolls are sound rings
+write('vestige/vestige/movesets/bell.json', moveset({
+    'peal': action(7, 3, 8, 'bell_peal', stamina=12, mv=0.9, poise=10, hit=ring(2.2, 1.0, offset=1.6, y_max=2.0)),
+    'toll': action(14, 6, 12, 'bell_toll', stamina=22, mv=1.3, poise=30, hit=ring(4.5, 1.2, y_max=1.4), hyperarmor=True,
+                   charge={'max_ticks': 12, 'motion_bonus': 0.4, 'poise_bonus': 15}, hitstop=4),
+    # Art: Toll. A great expanding ring that interrupts everything it passes (forced stagger).
+    'great_toll': action(12, 8, 14, 'bell_great_toll', stamina=16, mv=1.2, poise=60, stagger=25, hit=ring(7.0, 1.5, y_max=2.4),
+                         hyperarmor=True, hitstop=4, art={'cost': 20}),
+    'riposte': action(6, 3, 14, 'bell_riposte', mv=2.6, hit=circle(1.8, 1.0, 2.2), invulnerable=True, hitstop=9),
+}, light=['peal'], heavy='toll', running='peal', rolling='peal', art='great_toll', riposte='riposte'))
+
 # ---------------------------------------------------------------- enemies (GDD §18.1). Every attack has >= 9 windup ticks.
 write('vestige/vestige/movesets/hollowed.json', moveset({
     'swipe': action(14, 3, 14, 'hollowed_swipe', damage=22, hit=arc(2.4, 60, -60), motion={'active': 0.15},
@@ -188,6 +275,22 @@ write('vestige/vestige/movesets/hollowed_brute.json', moveset({
     'riposted': action(0, 0, 50, 'riposted', hitstop=0),
 }))
 
+
+# Tolling Ram (GDD §18.1): teaches rolling sideways. The charge only aims during its pawing windup.
+write('vestige/vestige/movesets/tolling_ram.json', moveset({
+    'butt_charge': action(18, 14, 22, 'ram_charge', damage=34, hit=thrust(1.6, 0.8, y_max=1.6), motion={'active': 0.6},
+                          telegraph={'glint': 'red', 'lead': 6, 'decal': {'type': 'thrust', 'length': 9.0, 'width': 1.6}},
+                          tracking=12, stagger=20, hyperarmor=True, hitstop=5),
+    'toll_ring': action(16, 10, 16, 'ram_toll', damage=22, hit=ring(5.0, 1.0), hyperarmor=True, tracking=0, hitstop=2,
+                        telegraph={'glint': 'red', 'lead': 6, 'decal': {'type': 'circle', 'radius': 5.0, 'offset': 0.0}}),
+    'headbutt': action(11, 3, 14, 'ram_headbutt', damage=24, hit=thrust(2.0, 0.7), motion={'active': 0.25},
+                       telegraph={'glint': 'white', 'lead': 5}, tracking=25),
+    'flinch': action(0, 0, 10, 'ram_flinch', hitstop=0),
+    'stagger': action(0, 0, 45, 'ram_stagger', hitstop=0),
+    'parried': action(0, 0, 40, 'ram_parried', hitstop=0),
+    'riposted': action(0, 0, 50, 'ram_riposted', hitstop=0),
+}))
+
 write('vestige/vestige/enemies/hollowed.json', {
     'moveset': 'vestige:hollowed', 'health': 90, 'defense': 10, 'poise': 20, 'poise_regen_delay': 60,
     'engage': {'min': 1.3, 'max': 2.4, 'strafe_speed': 0.45, 'pause_min': 12, 'pause_max': 32},
@@ -205,6 +308,16 @@ write('vestige/vestige/enemies/hollowed_brute.json', {
     ],
 })
 
+write('vestige/vestige/enemies/tolling_ram.json', {
+    'moveset': 'vestige:tolling_ram', 'health': 140, 'defense': 15, 'poise': 35, 'poise_regen_delay': 70,
+    'engage': {'min': 2.0, 'max': 7.0, 'strafe_speed': 0.4, 'pause_min': 18, 'pause_max': 40},
+    'attacks': [
+        {'action': 'butt_charge', 'weight': 4, 'min_range': 3.5, 'max_range': 9.0, 'cooldown': 90},
+        {'action': 'toll_ring', 'weight': 2, 'max_range': 4.0, 'cooldown': 100},
+        {'action': 'headbutt', 'weight': 4, 'max_range': 2.4, 'cooldown': 30},
+    ],
+})
+
 # ---------------------------------------------------------------- weapons (GDD §10.2 tier 0 + vanilla swords as Common blades)
 def weapon(name, items, cls, moveset_id, ar, weight, poise=1.0):
     write('vestige/vestige/weapons/%s.json' % name, {'items': items, 'class': cls, 'moveset': moveset_id,
@@ -214,6 +327,11 @@ def weapon(name, items, cls, moveset_id, ar, weight, poise=1.0):
 weapon('keepsake_blade', ['vestige:keepsake_blade'], 'blade', 'vestige:blade', 60, 3.0)
 weapon('ash_pike', ['vestige:ash_pike'], 'pike', 'vestige:pike', 55, 4.5)
 weapon('hand_maul', ['vestige:hand_maul'], 'maul', 'vestige:maul', 72, 7.0)
+weapon('taper_fang', ['vestige:taper_fang'], 'fang', 'vestige:fang', 62, 1.5)
+weapon('wickiron_greatblade', ['vestige:wickiron_greatblade'], 'greatblade', 'vestige:greatblade', 96, 11.0)
+weapon('chandlers_censer', ['vestige:chandlers_censer'], 'censer', 'vestige:censer', 74, 5.0)
+weapon('hunting_bow', ['vestige:hunting_bow'], 'longbow', 'vestige:longbow', 58, 2.5)
+weapon('handbell', ['vestige:handbell'], 'bell', 'vestige:bell', 60, 2.0)
 for mat, ar, w in [('wooden', 30, 2.0), ('stone', 40, 3.0), ('golden', 38, 2.5), ('iron', 52, 3.0), ('diamond', 66, 3.5), ('netherite', 80, 4.0)]:
     weapon('vanilla_%s_sword' % mat, ['minecraft:%s_sword' % mat], 'blade', 'vestige:blade', ar, w, 0.9)
 
@@ -225,6 +343,8 @@ def shield(name, items, kind, absorption, stability, weight):
 
 shield('plank_buckler', ['vestige:plank_buckler'], 'buckler', 0.7, 35, 1.5)
 shield('vanilla_shield', ['minecraft:shield'], 'kite', 0.9, 55, 4.0)
+shield('iron_kite_shield', ['vestige:iron_kite_shield'], 'kite', 0.9, 60, 4.5)
+shield('timber_bulwark', ['vestige:timber_bulwark'], 'bulwark', 1.0, 78, 9.0)
 
 # ---------------------------------------------------------------- damage types and tags
 for name, msg in [('weapon', 'vestige.weapon'), ('enemy_attack', 'vestige.enemy')]:
@@ -245,6 +365,12 @@ write('vestige/neoforge/biome_modifier/hollowed_spawns.json', {
         {'type': 'vestige:hollowed_brute', 'weight': 6, 'minCount': 1, 'maxCount': 1},
     ]})
 
+write('vestige/tags/worldgen/biome/spawns_tolling_ram.json', {'values': [
+    'minecraft:plains', 'minecraft:sunflower_plains', 'minecraft:meadow']})
+write('vestige/neoforge/biome_modifier/tolling_ram_spawns.json', {
+    'type': 'neoforge:add_spawns', 'biomes': '#vestige:spawns_tolling_ram',
+    'spawners': [{'type': 'vestige:tolling_ram', 'weight': 12, 'minCount': 1, 'maxCount': 2}]})
+
 # ---------------------------------------------------------------- loot
 def entity_loot(name, pools):
     write('vestige/loot_table/entities/%s.json' % name, {'type': 'minecraft:entity', 'pools': pools,
@@ -259,6 +385,7 @@ def drop(item, lo, hi):
 
 
 entity_loot('hollowed', [drop('minecraft:bone', 0, 1), drop('minecraft:string', 0, 2)])
+entity_loot('tolling_ram', [drop('minecraft:mutton', 1, 3), drop('minecraft:white_wool', 1, 2), drop('minecraft:leather', 0, 1)])
 entity_loot('hollowed_brute', [drop('minecraft:bone', 1, 2), drop('minecraft:iron_nugget', 0, 3)])
 
 # ---------------------------------------------------------------- recipes (tier 0 is craftable; Wren also offers one as a keepsake, GDD §4.5)
@@ -271,6 +398,9 @@ def shaped(name, pattern, key):
 shaped('keepsake_blade', ['  I', ' I ', 'S  '], {'I': 'minecraft:iron_ingot', 'S': 'minecraft:stick'})
 shaped('ash_pike', ['  I', ' S ', 'S  '], {'I': 'minecraft:iron_ingot', 'S': 'minecraft:stick'})
 shaped('plank_buckler', [' P ', 'PIP', ' P '], {'P': 'minecraft:oak_planks', 'I': 'minecraft:iron_ingot'})
+shaped('hunting_bow', [' SX', 'S X', ' SX'], {'S': 'minecraft:stick', 'X': 'minecraft:string'})
+shaped('iron_kite_shield', ['IPI', 'IPI', ' I '], {'I': 'minecraft:iron_ingot', 'P': 'minecraft:oak_planks'})
+shaped('timber_bulwark', ['PIP', 'PPP', 'PIP'], {'P': 'minecraft:oak_log', 'I': 'minecraft:iron_ingot'})
 shaped('hand_maul', ['CIC', ' S ', ' S '], {'C': 'minecraft:cobblestone', 'I': 'minecraft:iron_ingot', 'S': 'minecraft:stick'})
 
 print('ok', file=sys.stderr)

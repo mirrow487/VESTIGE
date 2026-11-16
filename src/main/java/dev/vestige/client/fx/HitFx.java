@@ -34,7 +34,8 @@ public final class HitFx {
         }
         hitsSeen++;
         // Hitstop on attacker and target (the local player's own action lives in the predicted machine).
-        for (int id : new int[] {p.attackerId(), p.targetId()}) {
+        boolean ranged = p.hitKind() == CombatPayloads.HitKind.RANGED;
+        for (int id : ranged ? new int[] {p.targetId()} : new int[] {p.attackerId(), p.targetId()}) {
             if (id == me.getId()) {
                 if (ClientCombat.machine().current() != null) {
                     ClientCombat.machine().current().addHitstop(p.hitstop());
@@ -87,7 +88,10 @@ public final class HitFx {
         var sound = p.critical() ? SoundEvents.PLAYER_ATTACK_CRIT : p.heavy() ? SoundEvents.PLAYER_ATTACK_KNOCKBACK : SoundEvents.PLAYER_ATTACK_STRONG;
         mc.level.playLocalSound(p.x(), p.y(), p.z(), sound, SoundSource.PLAYERS, 1f, p.heavy() ? 0.8f : 1f, false);
 
-        if (p.attackerId() == me.getId()) {
+        if (ranged && p.attackerId() == me.getId()) {
+            // Hit confirmation for the archer, wherever the arrow landed.
+            me.playSound(SoundEvents.ARROW_HIT_PLAYER, 0.6f, p.critical() ? 1.4f : 1.1f);
+        } else if (p.attackerId() == me.getId()) {
             shake = Math.max(shake, p.heavy() ? 1.4f : 0.6f);
         } else if (p.targetId() == me.getId()) {
             shake = Math.max(shake, 2.4f);

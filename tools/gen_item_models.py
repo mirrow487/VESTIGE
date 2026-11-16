@@ -111,6 +111,70 @@ def planks(x, y, w, h, r):
     return shade((150, 112, 70), tone * (0.86 if grain else 1.0) + r.uniform(-0.03, 0.03))
 
 
+def wax(x, y, w, h, r):
+    drip = (x * 3 + y) % 7 == 0
+    return shade((232, 222, 196), (0.9 if drip else 1.0) + r.uniform(-0.03, 0.03))
+
+
+def wick(x, y, w, h, r):
+    return shade((52, 40, 30), 1 + r.uniform(-0.1, 0.1))
+
+
+def bronze(base):
+    def p(x, y, w, h, r):
+        band = y % 6 == 0
+        return shade(base, (0.78 if band else 1.0) + r.uniform(-0.05, 0.05) + (0.12 if r.random() < 0.03 else 0))
+    return p
+
+
+def censer_pot(x, y, w, h, r):
+    # Pierced brass: a grid of holes glowing with embers inside.
+    if x % 4 == 2 and y % 4 == 2:
+        return (255, 170, 70) if (x + y) % 8 else (236, 120, 40)
+    return shade((170, 128, 56), (1.12 if y == 0 else 1.0) + r.uniform(-0.05, 0.05))
+
+
+def string(x, y, w, h, r):
+    return shade((222, 214, 190), 1 + r.uniform(-0.04, 0.04))
+
+
+def bone(x, y, w, h, r):
+    return shade((214, 204, 176), (0.85 if (x + y) % 5 == 0 else 1.0) + r.uniform(-0.03, 0.03))
+
+
+def kite_face(x, y, w, h, r):
+    # Hammered steel with a faint vertical sheen.
+    f = 1.0 + 0.06 * (1 if x % 7 < 2 else 0) + r.uniform(-0.05, 0.05)
+    if r.random() < 0.04:
+        f -= 0.12
+    return shade((150, 154, 168), f)
+
+
+def atlas(seed, rel, mats):
+    """Packs (name, w, h, painter) rectangles (UV units) into a 16x16-unit atlas, tallest first."""
+    t = Texture(seed)
+    x = y = 0
+    shelf = 0
+    for name, w, h, painter in sorted(mats, key=lambda m: -m[2]):
+        if y + h > 16:
+            x, y = x + shelf, 0
+            shelf = 0
+        assert x + w <= 16, ('atlas full', rel, name)
+        t.material(name, (x, y, x + w, y + h), painter)
+        y += h
+        shelf = max(shelf, w)
+    t.save(rel)
+    return t
+
+
+COMMON = lambda: [
+    ('steel_hi', 1, 16, steel((228, 230, 238))), ('steel', 1, 16, steel((170, 172, 184))), ('steel_lo', 1, 16, steel((112, 114, 128))),
+    ('brass', 2, 3, brass), ('brass_lo', 2, 3, lambda x, y, w, h, r: shade((120, 92, 40), 1 + r.uniform(-0.05, 0.05))),
+    ('leather', 2, 8, leather), ('ember', 1, 1, ember), ('iron', 2, 5, iron),
+    ('iron_lo', 2, 4, lambda x, y, w, h, r: shade(iron(x, y, w, h, r), 0.72)),
+]
+
+
 def weapon_atlas():
     t = Texture(7)
     t.material('steel_hi', (0, 0, 1, 16), steel((228, 230, 238)))
@@ -199,15 +263,41 @@ def dump(rel, obj):
         f.write('\n')
 
 
-def item_model(name, gui_texture):
+def item_model(name, gui_texture, base=None, overrides=None, out=None):
     """Top-level item model: the 3D model everywhere except the inventory and item frames."""
     flat = {'parent': 'minecraft:item/handheld', 'textures': {'layer0': gui_texture}}
-    dump(f'models/item/{name}.json', {
+    model = {
         'loader': 'neoforge:separate_transforms',
         'gui_light': 'front',
-        'base': {'parent': f'vestige:item/{name}_3d'},
+        'base': {'parent': f'vestige:item/{base or name + "_3d"}'},
         'perspectives': {'gui': flat, 'fixed': flat},
-    })
+    }
+    if overrides:
+        model['overrides'] = overrides
+    dump(f'models/item/{out or name}.json', model)
+
+
+# Vanilla bow display transforms (the 3D bow follows the bow sprite's layout).
+BOW_DISPLAY = {
+    'thirdperson_righthand': {'rotation': [-80, 260, -40], 'translation': [-1, -2, 2.5], 'scale': [0.9, 0.9, 0.9]},
+    'thirdperson_lefthand': {'rotation': [-80, -280, 40], 'translation': [-1, -2, 2.5], 'scale': [0.9, 0.9, 0.9]},
+    'firstperson_righthand': {'rotation': [0, -90, 25], 'translation': [1.13, 3.2, 1.13], 'scale': [0.68, 0.68, 0.68]},
+    'firstperson_lefthand': {'rotation': [0, 90, -25], 'translation': [1.13, 3.2, 1.13], 'scale': [0.68, 0.68, 0.68]},
+    'ground': HANDHELD['ground'], 'head': HANDHELD['head'],
+}
+
+
+def shield_display(scale, fp_scale, tp_translate=(0, 3, 3), fp_translate=(1, -1, -3)):
+    tx, ty, tz = tp_translate
+    fx, fy, fz = fp_translate
+    return {
+        'thirdperson_righthand': {'rotation': [0, 90, 0], 'translation': [tx, ty, tz], 'scale': [scale] * 3},
+        'thirdperson_lefthand': {'rotation': [0, -90, 0], 'translation': [tx, ty, tz], 'scale': [scale] * 3},
+        'firstperson_righthand': {'rotation': [0, 170, 5], 'translation': [-fx, fy, fz], 'scale': [fp_scale] * 3},
+        'firstperson_lefthand': {'rotation': [0, 190, -5], 'translation': [fx, fy, fz], 'scale': [fp_scale] * 3},
+        'ground': {'rotation': [0, 0, 0], 'translation': [0, 2, 0], 'scale': [0.5, 0.5, 0.5]},
+        'head': {'rotation': [0, 180, 0], 'translation': [0, 13, 7], 'scale': [1, 1, 1]},
+    }
 
 
 # Grip point of the flat sprites (bottom-left of the diagonal), in model units.
@@ -304,12 +394,181 @@ def plank_buckler(t):
     m.write('plank_buckler', display)
 
 
+def taper_fang():
+    t = atlas(21, 'item/taper_fang_3d.png', COMMON() + [('wax', 2, 4, wax), ('wick', 1, 2, wick)])
+    m = Model(t, 'vestige:item/taper_fang_3d', GRIP, -45)
+    m.axial('ember', -3.7, -3.3, 0.4, 0.4, name='wick_ember')
+    m.axial('wick', -3.3, -2.9, 0.3, 0.3, name='wick')
+    m.axial('wax', -2.9, -1.6, 1.4, 1.4, name='candle_pommel')
+    m.axial('leather', -1.6, 1.2, 1.0, 1.0, name='grip')
+    m.axial('wax', 1.2, 2.0, 3.6, 1.2, name='wax_guard')
+    m.axial('wax', 0.5, 1.2, 0.5, 0.6, x=-1.4, name='drip_l')
+    m.axial('wax', 0.8, 1.2, 0.4, 0.5, x=1.25, name='drip_r')
+    m.axial('steel_lo', 2.0, 6.6, 0.4, 0.44, name='spine')
+    m.axial('steel', 2.0, 7.0, 0.32, 0.3, x=-0.36, faces={'west': 'steel_hi'}, skip=('east',), name='edge_l')
+    m.axial('steel', 2.0, 7.0, 0.32, 0.3, x=0.36, faces={'east': 'steel_hi'}, skip=('west',), name='edge_r')
+    m.axial('steel_hi', 6.6, 7.6, 0.6, 0.3, name='tip_1')
+    m.axial('steel_hi', 7.6, 8.2, 0.24, 0.24, name='tip_2')
+    m.write('taper_fang', HANDHELD)
+
+
+def wickiron_greatblade():
+    t = atlas(22, 'item/wickiron_greatblade_3d.png', COMMON() + [('wick', 1, 12, wick), ('wax', 2, 2, wax)])
+    m = Model(t, 'vestige:item/wickiron_greatblade_3d', GRIP, -45)
+    m.axial('brass', -6.2, -5.0, 2.0, 2.0, name='pommel')
+    m.axial('leather', -5.0, 1.0, 1.2, 1.2, name='long_grip')
+    m.axial('wick', -3.6, -3.1, 1.3, 1.3, name='cord_1')
+    m.axial('wick', -1.6, -1.1, 1.3, 1.3, name='cord_2')
+    m.axial('iron_lo', 1.0, 2.2, 7.0, 1.8, name='guard')
+    m.axial('iron', 0.6, 2.6, 1.2, 2.0, x=-3.2, name='guard_cap_l')
+    m.axial('iron', 0.6, 2.6, 1.2, 2.0, x=3.2, name='guard_cap_r')
+    m.axial('wax', 1.1, 2.1, 1.2, 2.0, name='wax_seal')
+    m.axial('ember', 1.3, 1.9, 0.6, 2.1, name='ember_core')
+    m.axial('iron', 2.2, 17.5, 2.0, 0.7, faces={'up': 'iron_lo'}, name='blade_core')
+    m.axial('wick', 3.0, 14.5, 0.5, 0.74, name='wick_fuller')
+    m.axial('steel', 2.2, 17.8, 0.55, 0.46, x=-1.275, faces={'west': 'steel_hi'}, skip=('east',), name='edge_l')
+    m.axial('steel', 2.2, 17.8, 0.55, 0.46, x=1.275, faces={'east': 'steel_hi'}, skip=('west',), name='edge_r')
+    m.axial('iron', 17.5, 18.7, 1.8, 0.6, name='tip_1')
+    m.axial('steel_hi', 18.7, 19.7, 0.9, 0.44, name='tip_2')
+    m.write('wickiron_greatblade', HANDHELD)
+
+
+def chandlers_censer():
+    t = atlas(23, 'item/chandlers_censer_3d.png', COMMON() + [('pot', 6, 4, censer_pot), ('wood', 1, 8, wood((128, 94, 60)))])
+    m = Model(t, 'vestige:item/chandlers_censer_3d', GRIP, -45)
+    m.axial('brass', -3.4, -2.8, 1.3, 1.3, name='knob')
+    m.axial('leather', -2.8, 1.4, 1.0, 1.0, name='grip')
+    m.axial('wood', 1.4, 2.6, 0.9, 0.9, name='haft')
+    m.axial('brass', 2.6, 3.2, 1.4, 1.4, name='ring')
+    for i in range(5):
+        a0 = 3.2 + i * 0.95
+        w, d = (0.7, 0.25) if i % 2 == 0 else (0.25, 0.7)
+        m.axial('iron_lo', a0, a0 + 1.0, w, d, name=f'link_{i}')
+    m.axial('brass_lo', 7.9, 8.4, 2.4, 2.4, name='pot_foot')
+    m.axial('pot', 8.4, 11.6, 3.2, 3.2, faces={'up': 'brass', 'down': 'brass'}, name='pot')
+    m.axial('brass', 11.6, 12.3, 2.2, 2.2, name='lid')
+    m.axial('brass_lo', 12.3, 13.1, 0.9, 0.9, name='finial')
+    m.axial('ember', 13.1, 13.4, 0.5, 0.5, name='finial_ember')
+    m.write('chandlers_censer', HANDHELD)
+
+
+def _bow(m, drawn):
+    """Limbs arc toward -x (forward, toward the target under vanilla's bow display transforms; checked
+    in-game) as stepped segments; the string runs along the axis behind them. A drawn bow pulls the
+    string back to the cheek with an arrow nocked across the grip, red-fletched at the string."""
+    reach = 7.4
+    segs = [(-7.4, -6.0), (-6.0, -4.6), (-4.6, -3.2), (-3.2, -1.6), (1.6, 3.2), (3.2, 4.6), (4.6, 6.0), (6.0, 7.4)]
+    bend = 0.6 if drawn else 0.0
+    for a0, a1 in segs:
+        mid = (a0 + a1) / 2
+        x = -3.0 + 2.5 * (mid / reach) ** 2 + bend * (abs(mid) / reach) ** 3
+        m.axial('wood', a0, a1, 0.8, 0.8, x=x, faces={'east': 'wood_lo'}, name='limb')
+    m.axial('leather', -1.6, 1.6, 1.2, 1.1, x=-3.1, name='grip')
+    for a in (-7.4, 7.4):
+        m.axial('bone', a - 0.3 if a < 0 else a, a if a < 0 else a + 0.3, 0.9, 0.9, x=-0.5 + bend, name='nock')
+    if not drawn:
+        m.axial('string', -7.2, 7.2, 0.2, 0.2, x=-0.3, name='string')
+    else:
+        pull = 1.6
+        steps = 6
+        for side in (-1, 1):
+            for i in range(steps):
+                a0 = side * 7.2 * (1 - i / steps)
+                a1 = side * 7.2 * (1 - (i + 1) / steps)
+                x = 0.0 + pull * (i + 0.5) / steps
+                m.axial('string', min(a0, a1), max(a0, a1), 0.2, 0.2, x=x, name='string')
+        gx, gy, gz = GRIP_BOW
+        m.box('wood', (gx - 5.8, gy - 0.12, gz - 0.12), (gx + pull, gy + 0.12, gz + 0.12), name='arrow_shaft')
+        m.box('steel_hi', (gx - 6.8, gy - 0.3, gz - 0.1), (gx - 5.8, gy + 0.3, gz + 0.1), name='arrowhead')
+        m.box('feather', (gx + pull - 1.4, gy - 0.45, gz - 0.05), (gx + pull - 0.2, gy + 0.45, gz + 0.05), name='fletching')
+
+
+GRIP_BOW = (8.0, 8.0, 8.0)
+
+
+def hunting_bow():
+    t = atlas(24, 'item/hunting_bow_3d.png', COMMON() + [('wood', 1, 8, wood((140, 100, 60))), ('wood_lo', 1, 8, wood((96, 68, 42))),
+                                                         ('string', 1, 16, string), ('bone', 1, 1, bone),
+                                                         ('feather', 1, 1, lambda x, y, w, h, r: (176, 48, 40))])
+    for drawn, name in ((False, 'hunting_bow'), (True, 'hunting_bow_drawn')):
+        m = Model(t, 'vestige:item/hunting_bow_3d', GRIP_BOW, -45)
+        _bow(m, drawn)
+        m.write(name, BOW_DISPLAY)
+
+
+def handbell():
+    t = atlas(25, 'item/handbell_3d.png', COMMON() + [('bronze', 4, 6, bronze((184, 128, 64))), ('bronze_lo', 3, 4, bronze((128, 84, 40))),
+                                                      ('wood', 1, 8, wood((110, 76, 48)))])
+    m = Model(t, 'vestige:item/handbell_3d', GRIP, -45)
+    m.axial('brass', -3.2, -2.6, 1.3, 1.3, name='knob')
+    m.axial('wood', -2.6, 2.4, 1.0, 1.0, name='handle')
+    m.axial('leather', -1.4, 1.0, 1.15, 1.15, name='wrap')
+    m.axial('brass', 2.4, 3.1, 1.5, 1.5, name='collar')
+    m.axial('bronze', 3.1, 3.9, 2.0, 2.0, name='crown')
+    m.axial('bronze', 3.9, 6.3, 2.8, 2.8, name='waist')
+    m.axial('bronze_lo', 5.2, 5.6, 2.95, 2.95, name='band')
+    m.axial('bronze', 6.3, 7.2, 3.6, 3.6, faces={'up': 'bronze_lo'}, name='lip')
+    m.axial('iron_lo', 7.2, 7.8, 0.9, 0.9, name='clapper')
+    m.write('handbell', HANDHELD)
+
+
+def iron_kite_shield():
+    t = atlas(26, 'item/iron_kite_shield_3d.png', COMMON() + [('face', 10, 6, kite_face)])
+    m = Model(t, 'vestige:item/iron_kite_shield_3d')
+    z0, z1 = 7.4, 8.4
+    rows = [(3, 13, 10, 14), (3.5, 12.5, 7, 10), (4.5, 11.5, 4, 7), (5.5, 10.5, 1.5, 4), (6.5, 9.5, -0.5, 1.5), (7.4, 8.6, -1.6, -0.5)]
+    for i, (x0, x1, y0, y1) in enumerate(rows):
+        m.box('face', (x0, y0, z0), (x1, y1, z1), faces={'north': 'iron_lo'}, name=f'face_{i}')
+    m.box('steel_hi', (2.8, 13.8, z1), (13.2, 14.4, z1 + 0.3), name='rim_top')
+    m.box('steel', (2.8, 9.8, z1), (3.4, 13.8, z1 + 0.3), name='rim_l')
+    m.box('steel', (12.6, 9.8, z1), (13.2, 13.8, z1 + 0.3), name='rim_r')
+    # Lamplighter emblem: a brass lamp with an ember flame.
+    m.box('brass', (6.8, 6.0, z1), (9.2, 9.0, z1 + 0.4), name='lamp')
+    m.box('brass_lo', (7.2, 5.4, z1), (8.8, 6.0, z1 + 0.35), name='lamp_base')
+    m.box('brass_lo', (7.4, 9.0, z1), (8.6, 9.6, z1 + 0.35), name='lamp_cap')
+    m.box('ember', (7.6, 9.6, z1), (8.4, 11.0, z1 + 0.3), name='flame')
+    m.box('leather', (6.5, 4.0, z0 - 0.8), (9.5, 11.5, z0), skip=('south',), name='strap')
+    m.write('iron_kite_shield', shield_display(0.85, 0.7, tp_translate=(0, 1, 3)))
+
+
+def timber_bulwark():
+    t = atlas(27, 'item/timber_bulwark_3d.png', [m for m in COMMON() if m[0] in ('steel_hi', 'steel_lo', 'leather', 'iron', 'iron_lo', 'brass')]
+              + [('planks', 10, 16, planks)])
+    m = Model(t, 'vestige:item/timber_bulwark_3d')
+    z0, z1 = 7.0, 9.0
+    m.box('planks', (2, -4, z0), (14, 20, z1), faces={'north': 'iron_lo'}, name='wall')
+    for y in (-2.5, 7.5, 17.5):
+        m.box('iron', (1.8, y, z1), (14.2, y + 1.2, z1 + 0.3), name='band')
+    m.box('iron_lo', (1.6, -4.2, z0 - 0.1), (2.2, 20.2, z1 + 0.2), name='edge_l')
+    m.box('iron_lo', (13.8, -4.2, z0 - 0.1), (14.4, 20.2, z1 + 0.2), name='edge_r')
+    m.box('steel_lo', (5.5, 13.2, z1), (10.5, 14.2, z1 + 0.15), name='slit')
+    for x in (4, 12):
+        for y in (2.5, 12.5):
+            m.box('brass', (x - 0.4, y - 0.4, z1), (x + 0.4, y + 0.4, z1 + 0.3), name='stud')
+    m.box('iron', (7, 4, z1), (9, 6, z1 + 1.2), name='spike_base')
+    m.box('steel_hi', (7.5, 4.5, z1 + 1.2), (8.5, 5.5, z1 + 2.0), name='spike')
+    m.box('leather', (6.5, 2.0, z0 - 0.8), (9.5, 12.0, z0), skip=('south',), name='strap')
+    m.write('timber_bulwark', shield_display(0.62, 0.55, tp_translate=(0, -1, 2), fp_translate=(2, -3, -3)))
+
+
 if __name__ == '__main__':
     w = weapon_atlas()
     keepsake_blade(w)
     ash_pike(w)
     hand_maul(w)
     plank_buckler(buckler_atlas())
-    for name in ('keepsake_blade', 'ash_pike', 'hand_maul', 'plank_buckler'):
+    taper_fang()
+    wickiron_greatblade()
+    chandlers_censer()
+    hunting_bow()
+    handbell()
+    iron_kite_shield()
+    timber_bulwark()
+    for name in ('keepsake_blade', 'ash_pike', 'hand_maul', 'plank_buckler', 'taper_fang', 'wickiron_greatblade',
+                 'chandlers_censer', 'handbell', 'iron_kite_shield', 'timber_bulwark'):
         item_model(name, f'vestige:item/{name}')
+    # The bow switches to its drawn model while a shot is being drawn (vestige:draw, set on the client).
+    item_model('hunting_bow', 'vestige:item/hunting_bow', overrides=[
+        {'predicate': {'vestige:draw': 0.5}, 'model': 'vestige:item/hunting_bow_drawn'}])
+    item_model('hunting_bow', 'vestige:item/hunting_bow', base='hunting_bow_drawn_3d', out='hunting_bow_drawn')
     print('item models written')

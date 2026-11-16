@@ -33,6 +33,10 @@ public final class EntityModule implements VestigeModule {
             () -> EntityType.Builder.of(Hollowed::new, MobCategory.MONSTER).sized(0.8f, 2.45f).eyeHeight(2.18f)
                     .clientTrackingRange(8).build(VestigeIds.id("hollowed_brute").toString()));
 
+    public static final DeferredHolder<EntityType<?>, EntityType<dev.vestige.entity.mob.TollingRam>> TOLLING_RAM =
+            ENTITY_TYPES.register("tolling_ram", () -> EntityType.Builder.of(dev.vestige.entity.mob.TollingRam::new, MobCategory.MONSTER)
+                    .sized(1.35f, 1.6f).eyeHeight(1.35f).clientTrackingRange(10).build(VestigeIds.id("tolling_ram").toString()));
+
     @Override
     public String id() {
         return "entity";
@@ -50,6 +54,7 @@ public final class EntityModule implements VestigeModule {
     private static void attributes(EntityAttributeCreationEvent event) {
         event.put(HOLLOWED.get(), Hollowed.attributes(0.23, 0.0).build());
         event.put(HOLLOWED_BRUTE.get(), Hollowed.attributes(0.21, 0.6).build());
+        event.put(TOLLING_RAM.get(), dev.vestige.entity.mob.TollingRam.attributes().build());
     }
 
     private static void spawnPlacements(RegisterSpawnPlacementsEvent event) {
@@ -59,5 +64,7 @@ public final class EntityModule implements VestigeModule {
             event.register(t, SpawnPlacementTypes.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
                     Monster::checkMonsterSpawnRules, RegisterSpawnPlacementsEvent.Operation.REPLACE);
         }
+        event.register(TOLLING_RAM.get(), SpawnPlacementTypes.ON_GROUND, Heightmap.Types.MOTION_BLOCKING_NO_LEAVES,
+                dev.vestige.entity.mob.TollingRam::checkSpawn, RegisterSpawnPlacementsEvent.Operation.REPLACE);
     }
 }

@@ -12,11 +12,13 @@ import net.minecraft.util.StringRepresentable;
  *   <li>ARC: horizontal sweep from {@code from} to {@code to} over the active ticks, out to {@code reach}.</li>
  *   <li>THRUST: capsule straight ahead, {@code reach} long, {@code radius} thick.</li>
  *   <li>CIRCLE: disc of {@code radius} centred {@code offset} blocks ahead.</li>
+ *   <li>RING: a band {@code radius} thick, centred {@code offset} blocks ahead, that expands from 0 to
+ *       {@code reach} over the active ticks; keep {@code y_max} low so it can be jumped.</li>
  * </ul>
  */
 public record HitShape(Kind kind, float reach, float from, float to, float radius, float offset, float yMin, float yMax) {
     public enum Kind implements StringRepresentable {
-        ARC, THRUST, CIRCLE;
+        ARC, THRUST, CIRCLE, RING;
 
         public static final Codec<Kind> CODEC = StringRepresentable.fromEnum(Kind::values);
 

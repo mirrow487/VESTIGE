@@ -23,19 +23,50 @@ public final class CombatDamage {
     public record Outcome(boolean landed, float damage, boolean critical, PlayerDefense.Result.Kind defense) {}
 
     /**
+     * How a hit is delivered.
+     *
+     * @param attackerHitstop the attacker's action pauses on impact (melee only)
+     * @param motionOverride  replaces the action's motion value when not NaN (clouds, keen criticals)
+     * @param forceCritical   counts as a critical even on a target that is not reeling (Quickstep)
+     * @param poise           deals poise damage and stagger
+     * @param feedback        sends hit sparks/sound to clients
+     */
+    public record Options(boolean attackerHitstop, float motionOverride, boolean forceCritical, boolean poise, boolean feedback) {
+        public static final Options MELEE = new Options(true, Float.NaN, false, true, true);
+        public static final Options RANGED = new Options(false, Float.NaN, false, true, true);
+
+        public static Options cloud(float motionValue) {
+            return new Options(false, motionValue, false, false, false);
+        }
+
+        public Options keen(float criticalMotion) {
+            return new Options(attackerHitstop, criticalMotion, true, poise, feedback);
+        }
+    }
+
+    /**
      * @param attackRating weapon AR (players) or enemy action damage
      * @param poiseScale   multiplier on the action's poise damage (weapon factor, Resonant bonus)
      * @param damageBonus  additive damage bonus (e.g. 0.3 for a Crescendo art)
      */
     public static Outcome apply(LivingEntity attacker, LivingEntity target, RunningAction action, double attackRating,
                                 float poiseScale, float damageBonus, ResourceKey<DamageType> type) {
+        return apply(attacker, target, action, attackRating, poiseScale, damageBonus, type, Options.MELEE);
+    }
+
+    public static Outcome apply(LivingEntity attacker, LivingEntity target, RunningAction action, double attackRating,
+                                float poiseScale, float damageBonus, ResourceKey<DamageType> type, Options opt) {
         var power = action.def.power();
-        double motion = power.motionValue() + action.def.charge().map(c -> c.motionBonus() * action.chargeRatio()).orElse(0f);
+        boolean reeling = target instanceof CombatTarget rt && rt.isReeling();
+        // A keen strike on a reeling target lands with the weapon's riposte motion value instead of x1.5.
+        boolean keenRiposte = opt.forceCritical() && reeling && !Float.isNaN(opt.motionOverride());
+        double motion = !Float.isNaN(opt.motionOverride()) && (!opt.forceCritical() || keenRiposte) ? opt.motionOverride()
+                : power.motionValue() + action.def.charge().map(c -> c.motionBonus() * action.chargeRatio()).orElse(0f);
         double raw = DamageCalculator.raw(attackRating, motion, damageBonus);
         double defense = target instanceof CombatTarget ct ? ct.combatDefense()
                 : DamageCalculator.vanillaDefense(target.getAttributeValue(Attributes.ARMOR), target.getAttributeValue(Attributes.ARMOR_TOUGHNESS));
-        boolean riposte = action.kind == RunningAction.Kind.RIPOSTE;
-        boolean critical = riposte || (target instanceof CombatTarget ct && ct.isReeling());
+        boolean riposte = action.kind == RunningAction.Kind.RIPOSTE || keenRiposte;
+        boolean critical = riposte || reeling || opt.forceCritical();
         float damage = (float) (DamageCalculator.afterDefense(raw, defense) * (critical && !riposte ? STAGGER_CRIT : 1f));
 
         PlayerDefense.Result.Kind defended = PlayerDefense.Result.Kind.NONE;
@@ -54,7 +85,9 @@ public final class CombatDamage {
         }
         boolean blocked = defended == PlayerDefense.Result.Kind.BLOCKED;
         float poise = (power.poiseDamage() + action.def.charge().map(c -> c.poiseBonus() * action.chargeRatio()).orElse(0f)) * poiseScale;
-        if (target instanceof CombatTarget ct) {
+        if (!opt.poise()) {
+            // clouds: damage only
+        } else if (target instanceof CombatTarget ct) {
             if (action.def.inflictStagger() > 0) {
                 ct.forceStagger(action.def.inflictStagger());
             } else if (!riposte) {
@@ -64,16 +97,19 @@ public final class CombatDamage {
             Vec3 push = target.position().subtract(attacker.position());
             target.knockback(0.25 + 0.01 * poise, -push.x, -push.z);
         }
-        int hitstop = action.def.timing().hitstop();
-        action.addHitstop(hitstop);
-        if (target instanceof CombatTarget ct) {
+        int hitstop = opt.poise() ? action.def.timing().hitstop() : 0;
+        if (opt.attackerHitstop()) {
+            action.addHitstop(hitstop);
+        }
+        if (target instanceof CombatTarget ct && hitstop > 0) {
             ct.applyHitstop(hitstop);
         }
-        if (!blocked && defended != PlayerDefense.Result.Kind.GUARD_BROKEN) {
+        if (opt.feedback() && !blocked && defended != PlayerDefense.Result.Kind.GUARD_BROKEN) {
             Vec3 at = target.getBoundingBox().getCenter();
             boolean heavy = power.motionValue() >= 1.4f || action.chargeRatio() > 0f;
             Net.sendAround(target, new CombatPayloads.HitFeedback(attacker.getId(), target.getId(), (float) at.x, (float) at.y, (float) at.z,
-                    hitstop, heavy, critical, (riposte ? CombatPayloads.HitKind.RIPOSTE : CombatPayloads.HitKind.HIT).ordinal()), true);
+                    hitstop, heavy, critical, (riposte ? CombatPayloads.HitKind.RIPOSTE : opt.attackerHitstop() ? CombatPayloads.HitKind.HIT
+                            : CombatPayloads.HitKind.RANGED).ordinal()), true);
         }
         return new Outcome(true, damage, critical, defended);
     }

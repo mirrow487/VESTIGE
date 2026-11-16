@@ -1,0 +1,10 @@
+{
+  "items": [
+    "vestige:wickiron_greatblade"
+  ],
+  "class": "greatblade",
+  "moveset": "vestige:greatblade",
+  "attack_rating": 96,
+  "poise_damage": 1.0,
+  "weight": 11.0
+}

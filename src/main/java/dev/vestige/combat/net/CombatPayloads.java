@@ -68,7 +68,7 @@ public final class CombatPayloads {
     }
 
     /** What kind of contact a {@link HitFeedback} reports. */
-    public enum HitKind { HIT, BLOCK, PARRY, GUARD_BREAK, RIPOSTE }
+    public enum HitKind { HIT, BLOCK, PARRY, GUARD_BREAK, RIPOSTE, RANGED }
 
     /** S→C: a hit landed, was blocked or was parried (hitstop, particles, camera shake, sound). */
     public record HitFeedback(int attackerId, int targetId, float x, float y, float z, int hitstop, boolean heavy, boolean critical, int kind)

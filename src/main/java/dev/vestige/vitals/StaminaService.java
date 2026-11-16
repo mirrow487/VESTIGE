@@ -26,6 +26,24 @@ public final class StaminaService {
         }
     }
 
+    /**
+     * Continuous drain (sprinting in combat stance, GDD §8.2): pauses regeneration like a spend; synced
+     * every few ticks rather than every tick. Returns the stamina left.
+     */
+    public static float drain(ServerPlayer player, float perTick) {
+        Stamina s = get(player);
+        if (player.isCreative()) {
+            return s.current();
+        }
+        long now = player.level().getGameTime();
+        s.markSpent(now);
+        s.setCurrent(Math.max(0f, s.current() - perTick));
+        if (now % 5 == 0 || s.current() <= 0f) {
+            player.syncData(VitalsModule.STAMINA);
+        }
+        return s.current();
+    }
+
     /** Called every server tick for each player. */
     static void tick(ServerPlayer player, double regenFactor) {
         Stamina s = get(player);

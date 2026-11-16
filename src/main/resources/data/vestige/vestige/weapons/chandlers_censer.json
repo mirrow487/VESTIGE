@@ -1,0 +1,10 @@
+{
+  "items": [
+    "vestige:chandlers_censer"
+  ],
+  "class": "censer",
+  "moveset": "vestige:censer",
+  "attack_rating": 74,
+  "poise_damage": 1.0,
+  "weight": 5.0
+}

@@ -1,0 +1,12 @@
+{
+  "type": "neoforge:add_spawns",
+  "biomes": "#vestige:spawns_tolling_ram",
+  "spawners": [
+    {
+      "type": "vestige:tolling_ram",
+      "weight": 12,
+      "minCount": 1,
+      "maxCount": 2
+    }
+  ]
+}

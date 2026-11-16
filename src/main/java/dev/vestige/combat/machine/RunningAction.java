@@ -20,6 +20,8 @@ public final class RunningAction {
     public final java.util.Set<Integer> hitEntities = new java.util.HashSet<>();
     /** Set once a perfect dodge has been rewarded for this dodge. */
     public boolean perfectDodged;
+    /** Server: the action's effects (projectile, cloud) have been released. */
+    public boolean effectsFired;
     int elapsed;
     int hitstop;
     boolean holding;

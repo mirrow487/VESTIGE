@@ -34,6 +34,7 @@ public final class HitResolver {
         double reach = switch (shape.kind()) {
             case ARC, THRUST -> shape.reach();
             case CIRCLE -> shape.offset() + shape.radius();
+            case RING -> Math.abs(shape.offset()) + shape.reach();
         };
         AABB area = attacker.getBoundingBox().inflate(reach + 1.0, Math.max(1.0, shape.yMax()), reach + 1.0);
         for (Entity e : attacker.level().getEntities(attacker, area, e -> e.isAlive() && !e.isSpectator())) {
@@ -51,6 +52,8 @@ public final class HitResolver {
                 }
                 case THRUST -> HitGeometry.thrust(t, shape.reach(), shape.radius(), shape.yMin(), shape.yMax());
                 case CIRCLE -> HitGeometry.circle(t, shape.radius(), shape.offset(), shape.yMin(), shape.yMax());
+                case RING -> HitGeometry.ring(t, shape.reach(), shape.radius(), shape.offset(), activeIndex, activeCount,
+                        shape.yMin(), shape.yMax());
             };
             if (hit && attacker.hasLineOfSight(e)) {
                 action.hitEntities.add(e.getId());

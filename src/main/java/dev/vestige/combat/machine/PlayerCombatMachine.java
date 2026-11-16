@@ -46,6 +46,11 @@ public final class PlayerCombatMachine {
         default boolean riposteAvailable() {
             return false;
         }
+
+        /** True when the player can pay for an ammo-consuming projectile (an arrow, or creative). */
+        default boolean hasAmmo() {
+            return true;
+        }
     }
 
     public record MoveSetHandle(ResourceLocation id, MoveSet moveSet) {
@@ -142,6 +147,7 @@ public final class PlayerCombatMachine {
         if (!windowOpen(input) || !ctx.canSpendStamina()) {
             return Optional.empty();
         }
+        int comboBefore = comboIndex;
         Optional<Start> start = switch (input) {
             case ROLL -> ctx.common().flatMap(c -> c.start(Float.isNaN(dirYaw) ? "backstep" : "roll", seq, dirYaw, now, RunningAction.Kind.DODGE));
             case LIGHT -> ctx.weapon().flatMap(w -> startLight(w, seq, now, ctx));
@@ -151,9 +157,13 @@ public final class PlayerCombatMachine {
                     c.start(name, seq, Float.NaN, now, def.defense().guard() ? RunningAction.Kind.GUARD : RunningAction.Kind.PARRY))));
             case ART -> ctx.weapon().flatMap(w -> w.moveSet().art().flatMap(name -> w.moveSet().action(name)
                     .filter(def -> ctx.canSpendResonance(def.art().map(ActionDef.Art::cost).orElse(0f)))
-                    .flatMap(def -> w.start(name, seq, Float.NaN, now, RunningAction.Kind.ART))));
+                    .flatMap(def -> w.start(name, seq, def.dodge().isPresent() ? dirYaw : Float.NaN, now, RunningAction.Kind.ART))));
             default -> Optional.empty();
         };
+        if (start.isPresent() && !ammoOk(start.get().action().def, ctx)) {
+            comboIndex = comboBefore;
+            return Optional.empty();
+        }
         start.ifPresent(s -> {
             if (s.action().kind == RunningAction.Kind.HEAVY) {
                 s.action().holding = !(fromBuffer && bufferedHeavyReleased);
@@ -164,6 +174,10 @@ public final class PlayerCombatMachine {
             begin(s.action());
         });
         return start;
+    }
+
+    private static boolean ammoOk(ActionDef def, Context ctx) {
+        return def.effects().projectile().map(p -> !p.ammo() || ctx.hasAmmo()).orElse(true);
     }
 
     private Optional<Start> startLight(MoveSetHandle w, int seq, long now, Context ctx) {

@@ -1,5 +1,9 @@
 package dev.vestige.combat.player;
 
+import dev.vestige.combat.projectile.Ammo;
+import dev.vestige.combat.projectile.CombatArrow;
+import dev.vestige.combat.projectile.IncenseCloud;
+
 import dev.vestige.core.Net;
 import dev.vestige.combat.CombatData;
 import dev.vestige.combat.CombatModule;
@@ -39,6 +43,8 @@ public final class PlayerCombat {
     public static final int IN_COMBAT_TICKS = 100;
     /** Default stun when hit out of hyperarmor. */
     public static final int DEFAULT_HIT_STUN = 8;
+    /** GDD §8.2: sprinting costs 6 stamina per second in combat stance. */
+    public static final float SPRINT_STAMINA_PER_TICK = 6f / 20f;
 
     private PlayerCombat() {}
 
@@ -95,13 +101,22 @@ public final class PlayerCombat {
             public boolean riposteAvailable() {
                 return RiposteTargeting.find(player).isPresent();
             }
+
+            @Override
+            public boolean hasAmmo() {
+                return Ammo.has(player);
+            }
         };
     }
 
     /** Guard button: a buckler parries; a shield or the bare weapon guards (GDD §7.2, §7.7). Shared with the client. */
     public static String guardActionFor(Player player) {
         return ShieldProfiles.of(player.getOffhandItem(), player.level().isClientSide())
-                .map(s -> s.kind() == ShieldProfile.Kind.BUCKLER ? "parry_buckler" : "guard_shield")
+                .map(s -> switch (s.kind()) {
+                    case BUCKLER -> "parry_buckler";
+                    case BULWARK -> "guard_bulwark";
+                    default -> "guard_shield";
+                })
                 .orElse("guard_weapon");
     }
 
@@ -141,6 +156,9 @@ public final class PlayerCombat {
                 ResonanceService.spend(player, art.cost());
             }
         });
+        if (action.def.effects().keen() > 0) {
+            st.keenUntil = player.level().getGameTime() + action.def.total() + action.def.effects().keen();
+        }
         if (action.kind == RunningAction.Kind.RIPOSTE) {
             RiposteTargeting.find(player).ifPresent(target -> ((CombatTarget) target).beginCritical(player, action.def.total() + 6));
         }
@@ -153,8 +171,9 @@ public final class PlayerCombat {
         PlayerCombatState st = state(player);
         long now = player.level().getGameTime();
         RunningAction current = st.machine.current();
-        // Swapping items mid-action cancels it (except dodges, which do not use the weapon).
-        if (current != null && current.kind != RunningAction.Kind.DODGE && player.getMainHandItem().getItem() != st.actionItem) {
+        // Swapping items mid-action cancels it (except dodges and hit reactions, which do not use the weapon).
+        if (current != null && current.kind != RunningAction.Kind.DODGE && current.kind != RunningAction.Kind.OTHER
+                && player.getMainHandItem().getItem() != st.actionItem) {
             st.machine.interrupt(now, 0);
             Net.sendAround(player, new CombatPayloads.ActionEnd(
                     player.getId(), CombatPayloads.EndReason.CANCELLED.ordinal(), current.seq), true);
@@ -162,8 +181,17 @@ public final class PlayerCombat {
         Optional<PlayerCombatMachine.Start> buffered = st.machine.tick(now, context(player));
         buffered.ifPresent(s -> begin(player, st, s.action()));
         current = st.machine.current();
+        if (current != null && current.phase() == ActionPhase.ACTIVE && !current.effectsFired) {
+            current.effectsFired = true;
+            fireEffects(player, st, current);
+        }
         if (current != null && current.phase() == ActionPhase.ACTIVE && current.def.hit().isPresent()) {
             sweep(player, st, current);
+        }
+        // Sprinting in combat stance (armed) costs stamina; at zero the sprint stops (GDD §8.2).
+        if (player.isSprinting() && weapon(player).isPresent() && current == null
+                && StaminaService.drain(player, SPRINT_STAMINA_PER_TICK) <= 0f) {
+            player.setSprinting(false);
         }
         ResonanceService.tick(player, now - st.lastCombatTick);
         VitalsModule.tickPlayer(player);
@@ -191,8 +219,54 @@ public final class PlayerCombat {
                 new RunningAction(new ActionRef(h.id(), name), def, -1, Float.NaN, now, RunningAction.Kind.OTHER)))
                 .ifPresent(reaction -> {
                     st.machine.adopt(reaction);
+                    st.actionItem = player.getMainHandItem().getItem();
                     Net.sendAround(player, new CombatPayloads.ActionStart(player.getId(), reaction.ref.toString(), -1, Float.NaN, false), true);
                 });
+    }
+
+    private static float poiseScale(ServerPlayer player, WeaponProfile weapon) {
+        boolean resonant = ResonanceRules.resonant(ResonanceService.get(player));
+        return weapon.poiseDamage() * (resonant ? 1f + ResonanceRules.RESONANT_POISE_BONUS : 1f);
+    }
+
+    /**
+     * First active tick: release the action's projectile or cloud (GDD §7.11). Arrows fly along the
+     * player's aim (which lock-on already points at the target); a full charge adds speed.
+     */
+    private static void fireEffects(ServerPlayer player, PlayerCombatState st, RunningAction action) {
+        Optional<WeaponProfile> weapon = weapon(player);
+        if (weapon.isEmpty()) {
+            return;
+        }
+        var effects = action.def.effects();
+        effects.projectile().ifPresent(p -> {
+            ItemStack ammo = p.ammo() ? Ammo.take(player) : new ItemStack(net.minecraft.world.item.Items.ARROW);
+            if (ammo.isEmpty()) {
+                return;
+            }
+            CombatArrow arrow = new CombatArrow(player.level(), player, ammo);
+            arrow.arm(action, weapon.get().attackRating(), poiseScale(player, weapon.get()), action.damageBonus,
+                    ResonanceRules.hitGain(weapon.get().weight()));
+            arrow.pickup = player.getAbilities().instabuild || !p.ammo()
+                    ? net.minecraft.world.entity.projectile.AbstractArrow.Pickup.CREATIVE_ONLY
+                    : net.minecraft.world.entity.projectile.AbstractArrow.Pickup.ALLOWED;
+            float speed = p.speed() * (1f + p.chargeSpeed() * action.chargeRatio());
+            arrow.shootFromRotation(player, player.getXRot(), player.getYRot(), 0f, speed, 0.4f);
+            arrow.setCritArrow(action.chargeRatio() >= 1f);
+            player.level().addFreshEntity(arrow);
+            player.level().playSound(null, player.getX(), player.getY(), player.getZ(), net.minecraft.sounds.SoundEvents.ARROW_SHOOT,
+                    net.minecraft.sounds.SoundSource.PLAYERS, 1.0f, 0.9f + 0.3f * action.chargeRatio());
+        });
+        effects.cloud().ifPresent(c -> {
+            IncenseCloud cloud = CombatModule.INCENSE_CLOUD.get().create(player.level());
+            if (cloud == null) {
+                return;
+            }
+            var ahead = net.minecraft.world.phys.Vec3.directionFromRotation(0f, player.getYRot()).scale(c.offset());
+            cloud.moveTo(player.getX() + ahead.x, player.getY(), player.getZ() + ahead.z);
+            cloud.configure(player, action, weapon.get().attackRating(), c.radius(), c.duration(), c.interval(), c.motionValue());
+            player.level().addFreshEntity(cloud);
+        });
     }
 
     private static void sweep(ServerPlayer player, PlayerCombatState st, RunningAction action) {
@@ -200,12 +274,20 @@ public final class PlayerCombat {
         if (weapon.isEmpty()) {
             return;
         }
-        boolean resonant = ResonanceRules.resonant(ResonanceService.get(player));
-        float poiseScale = weapon.get().poiseDamage() * (resonant ? 1f + ResonanceRules.RESONANT_POISE_BONUS : 1f);
+        float poiseScale = poiseScale(player, weapon.get());
+        long now = player.level().getGameTime();
         for (Entity e : HitResolver.sweep(player, action, player.getYRot(), PlayerCombat::canHit)) {
             if (e instanceof LivingEntity living) {
+                CombatDamage.Options opt = CombatDamage.Options.MELEE;
+                boolean keen = st.keen(now) && action.kind != RunningAction.Kind.RIPOSTE;
+                if (keen) {
+                    opt = opt.keen(riposteMotion(player));
+                }
                 CombatDamage.Outcome out = CombatDamage.apply(player, living, action, weapon.get().attackRating(), poiseScale,
-                        action.damageBonus, CombatDamageTypes.WEAPON);
+                        action.damageBonus, CombatDamageTypes.WEAPON, opt);
+                if (out.landed() && keen) {
+                    st.keenUntil = Long.MIN_VALUE / 2;
+                }
                 if (out.landed()) {
                     ResonanceService.add(player, ResonanceRules.hitGain(weapon.get().weight())
                             + (action.kind == RunningAction.Kind.RIPOSTE ? ResonanceRules.RIPOSTE : 0f));
@@ -215,6 +297,13 @@ public final class PlayerCombat {
             }
             st.lastCombatTick = player.level().getGameTime();
         }
+    }
+
+    /** Motion value of the held weapon's riposte (used by keen criticals on reeling targets). */
+    private static float riposteMotion(ServerPlayer player) {
+        return weapon(player).flatMap(w -> CombatData.handle(false, w.moveset()))
+                .flatMap(h -> h.moveSet().riposte().flatMap(r -> h.moveSet().action(r)))
+                .map(def -> def.power().motionValue()).orElse(Float.NaN);
     }
 
     private static boolean canHit(Entity e) {

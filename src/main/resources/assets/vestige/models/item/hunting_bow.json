@@ -1,0 +1,29 @@
+{
+  "loader": "neoforge:separate_transforms",
+  "gui_light": "front",
+  "base": {
+    "parent": "vestige:item/hunting_bow_3d"
+  },
+  "perspectives": {
+    "gui": {
+      "parent": "minecraft:item/handheld",
+      "textures": {
+        "layer0": "vestige:item/hunting_bow"
+      }
+    },
+    "fixed": {
+      "parent": "minecraft:item/handheld",
+      "textures": {
+        "layer0": "vestige:item/hunting_bow"
+      }
+    }
+  },
+  "overrides": [
+    {
+      "predicate": {
+        "vestige:draw": 0.5
+      },
+      "model": "vestige:item/hunting_bow_drawn"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runs a scripted client scenario headlessly (Xvfb + software OpenGL) in a fresh copy of a world.
-# Usage: scripts/client-driver.sh [scenario]   (combat | anim | calib; default combat)
+# Usage: scripts/client-driver.sh [scenario]   (combat | depth | items | arsenal | ram | models | anim | calib | lock; default combat)
 # Screenshots: runs/client/screenshots/   Checks: grep "DRIVER" runs/client/logs/latest.log
 set -euo pipefail
 cd "$(dirname "$0")/.."

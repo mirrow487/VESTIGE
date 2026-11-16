@@ -11,7 +11,7 @@ Implements GDD §7 (combat), §8.1–8.2 (health scale, stamina) and §8.3 (Reso
  server: PlayerCombat ──► PlayerCombatMachine (authoritative) ──► HitResolver ──► CombatDamage ──► target
              │ ActionStart / ActionEnd / ActionHold / HitFeedback / Event
              ▼
- all clients: ClientActions (mirror) ──► HollowedGeoModel / PlayerAnimations / TelegraphFx / HitFx / LockOn
+ all clients: ClientActions (mirror) ──► TimelineGeoModel / PlayerAnimations / TelegraphFx / HitFx / LockOn
  enemies:  VestigeMob + ActionCombatGoal ──► same RunningAction + HitResolver + CombatDamage
 ```
 
@@ -19,7 +19,7 @@ Implements GDD §7 (combat), §8.1–8.2 (health scale, stamina) and §8.3 (Reso
 
 **One timeline for animation and hits (ADR-007).** An action's `pose` names a sequence in `combat.anim.PoseLibrary`. Its keys are anchored to phases (e.g. "windup peak at the first active tick", "strike complete at the last active tick"), so `PoseTimeline` lays them onto the action's exact tick timing. The same timeline:
 - becomes a playerAnimator keyframe animation for players (`client.anim.PlayerAnimations`), and
-- is sampled every frame and blended over the GeckoLib bones of enemy models (`client.entity.HollowedGeoModel`, ADR-011).
+- is sampled every frame and blended over the GeckoLib bones of enemy models (`client.entity.TimelineGeoModel`, ADR-011).
 
 Changing a number in a moveset JSON changes the hit window *and* the animation together.
 
@@ -30,7 +30,7 @@ Changing a number in a moveset JSON changes the hit window *and* the animation t
 | `vitals` | Stamina attachment and rules, ×5 health scale (`HealthScaling`), scaling of vanilla damage and healing |
 | `weapon` | Weapon and shield items; `WeaponProfile` and `ShieldProfile` data, synced to clients |
 | `combat` | Actions, movesets, `PlayerCombatMachine`, server `PlayerCombat`, guard/parry (`PlayerDefense`), riposte targeting, Resonance, hit geometry, damage formula, payloads, telegraph particle types |
-| `entity` | `VestigeMob` base class, `EnemyProfile` data, `ActionCombatGoal` AI, attack tokens, Hollowed and Hollowed Brute |
+| `entity` | `VestigeMob` and `AnimatedMob` (GeckoLib) base classes, `EnemyProfile` data, `ActionCombatGoal` AI, attack tokens, Hollowed, Hollowed Brute, Tolling Ram |
 | `client` | Input and prediction, animations, lock-on, HUD, telegraph and hit effects, enemy renderer, dev test driver |
 
 ## Player combat
@@ -147,13 +147,57 @@ The HUD bar shows the threshold tick, the current art's cost tick and a pulse at
 | Pike | Impaling Charge | 30 | A long-reach running thrust that inflicts a 30-tick stagger |
 | Maul | Tremor | 35 | An overhead slam with hyperarmor; 3.5-block ring, 70 poise damage |
 
+## Weapon classes (M4 stage 2, GDD §7.4, §7.11, §10)
+
+Every class has light combos, a chargeable heavy, running and rolling attacks, an art and a riposte, with timings from GDD §7.4 and motion values from §7.5. Each moves differently: the poses are authored per class in `PoseLibrary` and the 3D item models in `tools/gen_item_models.py`.
+
+| Class (item) | Feel | Art (cost) | Notes |
+|---|---|---|---|
+| Fang (Taper Fang) | Low crouch, 3-tick cuts, 5-hit combo ending in a 360° spin | **Quickstep** (15): a 5-tick i-frame blink in the input direction; the next hit within 1 s is a critical (on a reeling target it uses the riposte motion value) | Riposte MV 3.5: two quick stabs |
+| Greatblade (Wickiron Greatblade) | Two-handed 12-tick sweeps with follow-through; heavy is a whirling 360° cleave | **Cleaving Wake** (35): rise and slam, then a shockwave runs 7 blocks ahead (a `thrust` hitbox drawn as ground debris, `fx: "wake"`) | Light reach 3.3 |
+| Censer (Chandler's Censer) | Wide flail arcs with long active frames; the pot is flung by item rotation; heavy is a spin | **Smolder Wake** (25): spin, then an incense cloud (radius 4, wider than the spin) burns enemies inside every 10 ticks for 5 s (`IncenseCloud`, no poise damage) | Cloud is transient, never saved |
+| Longbow (Hunting Bow) | Quick shot (light) or hold-to-draw aimed shot (heavy, +0.9 MV and +45% speed at full draw) | **Pinning Shot** (25): braced full draw; the arrow roots the target (40-tick stagger) | Uses arrows from the inventory (creative: none needed); no arrows = no shot. Arrows (`CombatArrow`) deal damage through `CombatDamage` with ranged feedback |
+| Bell (Handbell) | Tolls are sound rings: Peal (a small ring ahead), Toll (heavy, a 4.5-block ring around you) | **Toll** (20): a 7-block ring that interrupts everything it passes (forced stagger) | Damage type is physical until the Resonance damage type arrives (M5) |
+| Shields | Kite (Iron Kite Shield, vanilla shield): block. Bulwark (Timber Bulwark): absorbs everything physical, stability 78, 22% walk speed | n/a | `guard_bulwark` action; braced pose |
+
+**Action effects** (`ActionDef.Effects`, fired on an action's first active tick):
+- `projectile {speed, charge_speed, ammo}`: looses a `CombatArrow` along the player's aim (lock-on already aims).
+- `cloud {radius, duration, interval, motion_value, offset}`: spawns an `IncenseCloud`.
+- `fx: "wake"`: ground shockwave visual along a thrust hitbox.
+- `keen` ticks: the next hit within them is a critical.
+
+**RING hitbox:** a band that expands from 0 to `reach` over the active ticks, centred `offset` ahead; a low `y_max` makes it jumpable. `ActionFx` draws every ring exactly where its hitbox is (gold for players, red for enemies), with a bell sound.
+
+**`CombatDamage.Options`:** melee (attacker hitstop), ranged (no attacker hitstop; the archer hears a hit confirmation), cloud (damage only), keen (forced critical).
+
+**Sprinting** in combat stance (armed) costs 6 stamina per second (GDD §8.2); at zero the sprint stops on both the server and the client.
+
+## Tolling Ram (GDD §18.1)
+
+A GeckoLib quadruped (`TollingRam`, `tools/gen_models.py`): matted fleece, dark ridged spiral horns, a bronze bell on a leather collar. Its lesson is **rolling sideways**.
+
+| Attack | Telegraph | What to do |
+|---|---|---|
+| **Butt Charge** | Paw-scraping windup (18 ticks), red glint, a 9-block line on the ground. It aims only during the scrape | Roll or step sideways once it starts running; it gallops 8 blocks straight, then skids and shakes its head (punish window). A hit staggers you |
+| **Toll Ring** | Rears up, red glint, a 5-block circle | It slams down and rings its bell: a low expanding ring. Jump it or roll through it |
+| **Headbutt** | Head rears back, white glint | Parriable |
+
+It spawns in plains, sunflower plains and meadows in daylight. Its reactions (`ram_flinch`, `ram_stagger`, `ram_parried`, `ram_riposted`: the forelegs fold and it kneels) are its own poses.
+
+**Quadruped animation:** `TimelineGeoModel` maps the shared timeline channels onto bones through a binding table:
+- arm channels → forelegs, leg channels → hind legs;
+- torso channels → neck;
+- body channels → the whole animal.
+
+So the same pose language and frame-locked hitboxes work for any creature.
+
 ## Models and animation quality
 
-- **Enemies** (`HollowedGeoModel`, ADR-011 rev. 2):
+- **Enemies** (`TimelineGeoModel`, ADR-011 rev. 2):
   - Hollowed and Hollowed Brute are GeckoLib models built by `tools/gen_models.py` (`.geo.json`, `.animation.json` and a 128×128 painted texture, all Blockbench-compatible);
   - keyframed idle, walk (speed follows limb swing) and death (collapse and hold, then a poof after 32 ticks);
   - combat poses are sampled from the shared timeline every frame and blended over the keyframed bones (smoothstep, 2.5 ticks in, 4 out), with elbows/knees on separate forearm/shin bones and a root height channel for kneels.
-- **Weapons** (`tools/gen_item_models.py`): Keepsake Blade, Ash Pike, Hand Maul and Plank Buckler are 3D element models with bevelled parts and painted part atlases.
+- **Weapons** (`tools/gen_item_models.py`): all eleven weapons and shields are 3D element models with bevelled parts and painted part atlases (2 texels per unit). The Hunting Bow switches to a drawn model (string at the cheek, arrow nocked) while a shot is drawn (`vestige:draw` item property).
   - Each weapon is built along its own axis, then rotated −45° about the grip, so it sits exactly where the flat sprite sat; every calibrated pose stays valid.
   - The inventory and item frames keep the crisp 16×16 sprite (`neoforge:separate_transforms`).
 - **Player poses** follow anticipation → snap → overshoot → settle, for example:
@@ -225,10 +269,15 @@ All combat data is generated by `tools/gen_combat_data.py` and checked by `Comba
 | Pose anchoring and easing | `PoseTimelineTest` (unit) |
 | Data references and readability rules | `CombatDataConsistencyTest` (unit) |
 | Guard/parry/art/riposte machine rules, riposte geometry, Resonance rules | `PlayerCombatMachineTest`, `CombatDepthRulesTest` (unit) |
+| Bow hits at range and needs arrows, Pinning Shot roots, Toll hits all around, incense burns over time, Cleaving Wake reach (and control), Quickstep critical, bulwark absorbs, armed sprint costs stamina | `gametest/combat/CombatArsenalTests` (GameTest) |
+| Ram charge hits in line and staggers, sidestep beats it, Toll Ring hits grounded players but is jumped | `gametest/combat/TollingRamTests` (GameTest) |
+| Ring hitbox expansion, coverage and jumpability | `HitGeometryTest` (unit) |
 | Weapon guard, guard break, buckler parry, early parry fails, grabs unparriable, riposte after parry, backstab, art spends Resonance, Riposte Stance counter, Crescendo bonus, Resonance gain/decay, shield beats weapon guard | `gametest/combat/CombatDepthTests` (GameTest) |
 | Hits land only in active frames, misses behind, stamina, rejection, i-frames vs. a real swipe (plus control), interrupt, poise break, charged > tapped, swap cancel, health scale, profile health, AI attacks | `gametest/combat/CombatTests` (GameTest) |
 | The real client: prediction, HUD, animations playing, roll movement, lock-on, glint, dodge through a live attack, hits, decal, `/kill`, config screen drill-down | `scripts/client-driver.sh combat` (screenshots plus `DRIVER CHECK` lines) |
 | Real client: guards, buckler parry against a live Hollowed (reel, Resonance), riposte kill, backstab, all three arts, guard released server-side | `scripts/client-driver.sh depth` |
+| Every stage 2 class from the side (windup peak, strike, art) and first person; drawn bow, aimed shot hitting a dummy, ring/wake/cloud visuals; kite and tower guards | `scripts/client-driver.sh arsenal` |
+| Tolling Ram poses (scrape, gallop, skid, toll, headbutt, reactions, death) and a live charge rolled out of | `scripts/client-driver.sh ram` |
 | 3D weapon models present, in hand (front/side/first person), mid-swing, arts from the side, buckler parry frames, on the ground, flat inventory icons | `scripts/client-driver.sh items` |
 | GeckoLib enemy models: poses front/side, death | `scripts/client-driver.sh models` |
 | Lock-on reticle against a stationary target | `scripts/client-driver.sh lock` |

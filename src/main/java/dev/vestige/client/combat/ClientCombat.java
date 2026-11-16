@@ -88,6 +88,11 @@ public final class ClientCombat {
             public boolean riposteAvailable() {
                 return riposteTarget(player).isPresent();
             }
+
+            @Override
+            public boolean hasAmmo() {
+                return dev.vestige.combat.projectile.Ammo.has(player);
+            }
         };
     }
 
@@ -170,7 +175,7 @@ public final class ClientCombat {
             // swallowed: F is the weapon art while armed
         }
         while (CombatKeys.ART.consumeClick()) {
-            press(CombatInput.ART, Float.NaN);
+            press(CombatInput.ART, dodgeDirection(player)); // used only by dodging arts (Quickstep)
         }
     }
 
@@ -240,12 +245,17 @@ public final class ClientCombat {
         RunningAction current = MACHINE.current();
         boolean stunned = MACHINE.stunned(clientTick);
         if (current == null && !stunned) {
+            // Out of stamina in combat stance: no sprinting (the server drains 6/s while sprinting armed).
+            if (armed() && !player.isCreative() && player.getData(VitalsModule.STAMINA).current() <= 0f) {
+                player.setSprinting(false);
+            }
             return;
         }
         if (current != null && current.kind == RunningAction.Kind.GUARD) {
-            // Guarding: a slow, deliberate walk (GDD §7.7).
-            event.getInput().forwardImpulse *= 0.35f;
-            event.getInput().leftImpulse *= 0.35f;
+            // Guarding: a slow, deliberate walk (GDD §7.7); a tower shield is slower still.
+            float speed = current.ref.action().equals("guard_bulwark") ? 0.22f : 0.35f;
+            event.getInput().forwardImpulse *= speed;
+            event.getInput().leftImpulse *= speed;
             event.getInput().jumping = false;
             player.setSprinting(false);
             return;

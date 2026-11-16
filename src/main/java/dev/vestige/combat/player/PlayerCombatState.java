@@ -10,6 +10,12 @@ public final class PlayerCombatState {
     Item actionItem;
     /** Last game tick the player attacked or was attacked; used for "in combat" checks. */
     long lastCombatTick = Long.MIN_VALUE / 2;
+    /** Until this tick the next landed hit is a critical (Quickstep, GDD §7.11). */
+    long keenUntil = Long.MIN_VALUE / 2;
+
+    public boolean keen(long now) {
+        return now <= keenUntil;
+    }
 
     public PlayerCombatMachine machine() {
         return machine;

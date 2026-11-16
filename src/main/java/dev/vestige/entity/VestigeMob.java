@@ -99,6 +99,15 @@ public abstract class VestigeMob extends Monster implements CombatTarget, Health
         startAction(attack.action());
     }
 
+    /**
+     * Removes all AI goals but keeps physics and the action runtime (tests and the dev driver):
+     * the mob stands still until told to {@link #startAction act}, and root motion still moves it.
+     */
+    public void pacify() {
+        goalSelector.removeAllGoals(g -> true);
+        targetSelector.removeAllGoals(g -> true);
+    }
+
     /** Starts a named action from this enemy's moveset and tells nearby clients. */
     public boolean startAction(String name) {
         Optional<EnemyProfile> profile = profile();

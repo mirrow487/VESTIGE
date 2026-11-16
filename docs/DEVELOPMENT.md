@@ -39,6 +39,8 @@ scripts/client-driver.sh anim     # one attack, for quick animation iteration
 scripts/client-driver.sh calib    # single-axis test poses, to check rotation conventions
 scripts/client-driver.sh depth    # guards, live buckler parry, riposte, backstab, weapon arts, Resonance HUD
 scripts/client-driver.sh items    # 3D weapon models: in hand (front/side/first person), arts, parry frames, ground, inventory
+scripts/client-driver.sh arsenal  # stage 2 classes: side/first-person poses, arts, drawn bow + live shot, rings, wake, cloud, shields
+scripts/client-driver.sh ram      # Tolling Ram poses and death, then a live charge the player rolls out of
 scripts/client-driver.sh models   # GeckoLib enemy models: poses front/side, death
 scripts/client-driver.sh lock     # lock-on reticle against a stationary target
 ```

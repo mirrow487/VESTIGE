@@ -11,7 +11,54 @@ import java.util.Optional;
  */
 public record ActionDef(Timing timing, Power power, boolean hyperarmor, Optional<HitShape> hit, Motion motion,
                         Optional<Telegraph> telegraph, String pose, Optional<Charge> charge, Optional<Dodge> dodge,
-                        int tracking, int inflictStagger, Defense defense, Optional<Art> art) {
+                        int tracking, int inflictStagger, Defense defense, Optional<Art> art, Effects effects) {
+
+    /**
+     * What an action does besides its melee hitbox, triggered on its first active tick (GDD §7.11).
+     *
+     * @param projectile fires a projectile along the attacker's aim (Longbow)
+     * @param cloud      leaves a lingering damage cloud (Censer incense)
+     * @param fx         client visual for the active frames: "wake" (a ground shockwave running along a
+     *                   thrust line), "toll" (sound ring; also drawn for every RING hitbox)
+     * @param keen       after this action, the next hit within this many ticks is a critical (Quickstep)
+     */
+    public record Effects(Optional<Projectile> projectile, Optional<Cloud> cloud, Optional<String> fx, int keen) {
+        public static final Effects NONE = new Effects(Optional.empty(), Optional.empty(), Optional.empty(), 0);
+        public static final Codec<Effects> CODEC = RecordCodecBuilder.create(i -> i.group(
+                Projectile.CODEC.optionalFieldOf("projectile").forGetter(Effects::projectile),
+                Cloud.CODEC.optionalFieldOf("cloud").forGetter(Effects::cloud),
+                Codec.STRING.optionalFieldOf("fx").forGetter(Effects::fx),
+                Codec.intRange(0, 200).optionalFieldOf("keen", 0).forGetter(Effects::keen)
+        ).apply(i, Effects::new));
+    }
+
+    /**
+     * @param speed       launch speed in blocks per tick at full draw
+     * @param chargeSpeed extra fraction of speed gained from a full charge (0 = none)
+     * @param ammo        consumes an arrow from the inventory (not in creative)
+     */
+    public record Projectile(float speed, float chargeSpeed, boolean ammo) {
+        public static final Codec<Projectile> CODEC = RecordCodecBuilder.create(i -> i.group(
+                Codec.floatRange(0.1f, 10f).fieldOf("speed").forGetter(Projectile::speed),
+                Codec.floatRange(0f, 2f).optionalFieldOf("charge_speed", 0f).forGetter(Projectile::chargeSpeed),
+                Codec.BOOL.optionalFieldOf("ammo", true).forGetter(Projectile::ammo)
+        ).apply(i, Projectile::new));
+    }
+
+    /**
+     * A lingering cloud centred {@code offset} blocks ahead: every {@code interval} ticks for
+     * {@code duration} ticks, everything hostile inside {@code radius} takes {@code motionValue} of the
+     * attacker's attack rating (no poise damage, no flinch).
+     */
+    public record Cloud(float radius, int duration, int interval, float motionValue, float offset) {
+        public static final Codec<Cloud> CODEC = RecordCodecBuilder.create(i -> i.group(
+                Codec.floatRange(0.5f, 12f).fieldOf("radius").forGetter(Cloud::radius),
+                Codec.intRange(1, 1200).fieldOf("duration").forGetter(Cloud::duration),
+                Codec.intRange(1, 100).optionalFieldOf("interval", 10).forGetter(Cloud::interval),
+                Codec.floatRange(0f, 5f).fieldOf("motion_value").forGetter(Cloud::motionValue),
+                Codec.FLOAT.optionalFieldOf("offset", 0f).forGetter(Cloud::offset)
+        ).apply(i, Cloud::new));
+    }
 
     /**
      * Defensive properties (GDD §7.7).
@@ -135,7 +182,8 @@ public record ActionDef(Timing timing, Power power, boolean hyperarmor, Optional
             Codec.intRange(0, 360).optionalFieldOf("tracking", 30).forGetter(ActionDef::tracking),
             Codec.intRange(0, 200).optionalFieldOf("inflict_stagger", 0).forGetter(ActionDef::inflictStagger),
             Defense.CODEC.optionalFieldOf("defense", Defense.NONE).forGetter(ActionDef::defense),
-            Art.CODEC.optionalFieldOf("art").forGetter(ActionDef::art)
+            Art.CODEC.optionalFieldOf("art").forGetter(ActionDef::art),
+            Effects.CODEC.optionalFieldOf("effects", Effects.NONE).forGetter(ActionDef::effects)
     ).apply(i, ActionDef::new));
 
     /** Parriable attacks are those telegraphed with a white glint (GDD §7.12). */

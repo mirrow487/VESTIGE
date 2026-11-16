@@ -1,0 +1,10 @@
+{
+  "items": [
+    "vestige:hunting_bow"
+  ],
+  "class": "longbow",
+  "moveset": "vestige:longbow",
+  "attack_rating": 58,
+  "poise_damage": 1.0,
+  "weight": 2.5
+}

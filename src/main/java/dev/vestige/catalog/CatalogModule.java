@@ -25,6 +25,9 @@ public final class CatalogModule implements VestigeModule {
     public static final DeferredItem<Item> HOLLOWED_BRUTE_SPAWN_EGG = ITEMS.register("hollowed_brute_spawn_egg",
             () -> new DeferredSpawnEggItem(EntityModule.HOLLOWED_BRUTE, 0x6e695e, 0x8a2f24, new Item.Properties()));
 
+    public static final DeferredItem<Item> TOLLING_RAM_SPAWN_EGG = ITEMS.register("tolling_ram_spawn_egg",
+            () -> new DeferredSpawnEggItem(EntityModule.TOLLING_RAM, 0xd8ccb0, 0xb07a3c, new Item.Properties()));
+
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> TAB = TABS.register("main", () -> CreativeModeTab.builder()
             .title(Component.translatable("itemGroup.vestige"))
             .icon(() -> new ItemStack(WeaponModule.KEEPSAKE_BLADE.get()))
@@ -32,8 +35,17 @@ public final class CatalogModule implements VestigeModule {
                 out.accept(WeaponModule.KEEPSAKE_BLADE.get());
                 out.accept(WeaponModule.ASH_PIKE.get());
                 out.accept(WeaponModule.HAND_MAUL.get());
+                out.accept(WeaponModule.HUNTING_BOW.get());
+                out.accept(WeaponModule.TAPER_FANG.get());
+                out.accept(WeaponModule.WICKIRON_GREATBLADE.get());
+                out.accept(WeaponModule.CHANDLERS_CENSER.get());
+                out.accept(WeaponModule.HANDBELL.get());
+                out.accept(WeaponModule.PLANK_BUCKLER.get());
+                out.accept(WeaponModule.IRON_KITE_SHIELD.get());
+                out.accept(WeaponModule.TIMBER_BULWARK.get());
                 out.accept(HOLLOWED_SPAWN_EGG.get());
                 out.accept(HOLLOWED_BRUTE_SPAWN_EGG.get());
+                out.accept(TOLLING_RAM_SPAWN_EGG.get());
             })
             .build());
 

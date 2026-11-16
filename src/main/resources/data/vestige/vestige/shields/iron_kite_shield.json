@@ -1,0 +1,9 @@
+{
+  "items": [
+    "vestige:iron_kite_shield"
+  ],
+  "kind": "kite",
+  "absorption": 0.9,
+  "stability": 60,
+  "weight": 4.5
+}

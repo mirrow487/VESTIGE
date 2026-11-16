@@ -1,0 +1,116 @@
+{
+  "actions": {
+    "quick_shot": {
+      "timing": {
+        "windup": 8,
+        "active": 1,
+        "recovery": 7,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 3
+      },
+      "power": {
+        "stamina": 10,
+        "motion_value": 0.9,
+        "poise_damage": 6,
+        "damage": 0
+      },
+      "pose": "bow_quick",
+      "effects": {
+        "projectile": {
+          "speed": 2.4
+        }
+      }
+    },
+    "aimed_shot": {
+      "timing": {
+        "windup": 14,
+        "active": 1,
+        "recovery": 9,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 4
+      },
+      "power": {
+        "stamina": 16,
+        "motion_value": 1.0,
+        "poise_damage": 10,
+        "damage": 0
+      },
+      "pose": "bow_aimed",
+      "charge": {
+        "max_ticks": 20,
+        "motion_bonus": 0.9,
+        "poise_bonus": 10
+      },
+      "effects": {
+        "projectile": {
+          "speed": 2.6,
+          "charge_speed": 0.45
+        }
+      }
+    },
+    "pinning_shot": {
+      "timing": {
+        "windup": 16,
+        "active": 1,
+        "recovery": 10,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 5
+      },
+      "power": {
+        "stamina": 14,
+        "motion_value": 1.6,
+        "poise_damage": 20,
+        "damage": 0
+      },
+      "pose": "bow_pinning",
+      "inflict_stagger": 40,
+      "art": {
+        "cost": 25
+      },
+      "effects": {
+        "projectile": {
+          "speed": 3.2
+        }
+      }
+    },
+    "riposte": {
+      "timing": {
+        "windup": 6,
+        "active": 3,
+        "recovery": 14,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 8
+      },
+      "power": {
+        "stamina": 0,
+        "motion_value": 2.4,
+        "poise_damage": 0,
+        "damage": 0
+      },
+      "pose": "bow_riposte",
+      "hit": {
+        "type": "arc",
+        "reach": 2.4,
+        "from": 40,
+        "to": -40,
+        "y_min": 0.0,
+        "y_max": 2.2
+      },
+      "defense": {
+        "invulnerable": true
+      }
+    }
+  },
+  "art": "pinning_shot",
+  "riposte": "riposte",
+  "light": [
+    "quick_shot"
+  ],
+  "heavy": "aimed_shot",
+  "running": "quick_shot",
+  "rolling": "quick_shot"
+}
