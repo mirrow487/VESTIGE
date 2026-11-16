@@ -1,0 +1,10 @@
+{
+  "items": [
+    "vestige:keepsake_blade"
+  ],
+  "class": "blade",
+  "moveset": "vestige:blade",
+  "attack_rating": 60,
+  "poise_damage": 1.0,
+  "weight": 3.0
+}

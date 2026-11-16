@@ -1,0 +1,28 @@
+{
+  "moveset": "vestige:hollowed_brute",
+  "health": 220,
+  "defense": 25,
+  "poise": 60,
+  "poise_regen_delay": 80,
+  "engage": {
+    "min": 1.8,
+    "max": 2.8,
+    "strafe_speed": 0.35,
+    "pause_min": 20,
+    "pause_max": 40
+  },
+  "attacks": [
+    {
+      "action": "overhead_slam",
+      "weight": 3,
+      "max_range": 3.2,
+      "cooldown": 60
+    },
+    {
+      "action": "sweep",
+      "weight": 3,
+      "max_range": 3.2,
+      "cooldown": 40
+    }
+  ]
+}

@@ -1,0 +1,215 @@
+{
+  "actions": {
+    "light_1": {
+      "timing": {
+        "windup": 5,
+        "active": 3,
+        "recovery": 7,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 3
+      },
+      "power": {
+        "stamina": 12,
+        "motion_value": 1.0,
+        "poise_damage": 8,
+        "damage": 0
+      },
+      "pose": "blade_slash_rl",
+      "hit": {
+        "type": "arc",
+        "reach": 2.6,
+        "from": 70,
+        "to": -70,
+        "y_min": 0.0,
+        "y_max": 2.2
+      },
+      "motion": {
+        "active": 0.1
+      }
+    },
+    "light_2": {
+      "timing": {
+        "windup": 5,
+        "active": 3,
+        "recovery": 7,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 3
+      },
+      "power": {
+        "stamina": 12,
+        "motion_value": 1.0,
+        "poise_damage": 8,
+        "damage": 0
+      },
+      "pose": "blade_slash_lr",
+      "hit": {
+        "type": "arc",
+        "reach": 2.6,
+        "from": -70,
+        "to": 70,
+        "y_min": 0.0,
+        "y_max": 2.2
+      },
+      "motion": {
+        "active": 0.1
+      }
+    },
+    "light_3": {
+      "timing": {
+        "windup": 6,
+        "active": 3,
+        "recovery": 8,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 3
+      },
+      "power": {
+        "stamina": 12,
+        "motion_value": 1.05,
+        "poise_damage": 9,
+        "damage": 0
+      },
+      "pose": "blade_overhead",
+      "hit": {
+        "type": "arc",
+        "reach": 2.7,
+        "from": 30,
+        "to": -20,
+        "y_min": 0.0,
+        "y_max": 2.2
+      },
+      "motion": {
+        "active": 0.12
+      }
+    },
+    "light_4": {
+      "timing": {
+        "windup": 6,
+        "active": 3,
+        "recovery": 10,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 3
+      },
+      "power": {
+        "stamina": 13,
+        "motion_value": 1.15,
+        "poise_damage": 10,
+        "damage": 0
+      },
+      "pose": "blade_thrust",
+      "hit": {
+        "type": "thrust",
+        "reach": 3.0,
+        "radius": 0.5,
+        "y_min": 0.2,
+        "y_max": 2.0
+      },
+      "motion": {
+        "active": 0.18
+      }
+    },
+    "heavy": {
+      "timing": {
+        "windup": 10,
+        "active": 3,
+        "recovery": 12,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 5
+      },
+      "power": {
+        "stamina": 22,
+        "motion_value": 1.45,
+        "poise_damage": 18,
+        "damage": 0
+      },
+      "pose": "blade_heavy",
+      "hyperarmor": true,
+      "hit": {
+        "type": "arc",
+        "reach": 2.9,
+        "from": 80,
+        "to": -60,
+        "y_min": 0.0,
+        "y_max": 2.2
+      },
+      "motion": {
+        "active": 0.15
+      },
+      "charge": {
+        "max_ticks": 14,
+        "motion_bonus": 0.45,
+        "poise_bonus": 10
+      }
+    },
+    "running": {
+      "timing": {
+        "windup": 6,
+        "active": 3,
+        "recovery": 9,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 3
+      },
+      "power": {
+        "stamina": 14,
+        "motion_value": 1.1,
+        "poise_damage": 10,
+        "damage": 0
+      },
+      "pose": "blade_running",
+      "hit": {
+        "type": "arc",
+        "reach": 2.8,
+        "from": 50,
+        "to": -50,
+        "y_min": 0.0,
+        "y_max": 2.2
+      },
+      "motion": {
+        "windup": 0.25,
+        "active": 0.3
+      }
+    },
+    "rolling": {
+      "timing": {
+        "windup": 4,
+        "active": 3,
+        "recovery": 8,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 3
+      },
+      "power": {
+        "stamina": 10,
+        "motion_value": 0.9,
+        "poise_damage": 7,
+        "damage": 0
+      },
+      "pose": "blade_rolling",
+      "hit": {
+        "type": "arc",
+        "reach": 2.6,
+        "from": -40,
+        "to": 60,
+        "y_min": 0.0,
+        "y_max": 2.2
+      },
+      "motion": {
+        "active": 0.12
+      }
+    }
+  },
+  "light": [
+    "light_1",
+    "light_2",
+    "light_3",
+    "light_4"
+  ],
+  "heavy": "heavy",
+  "running": "running",
+  "rolling": "rolling"
+}

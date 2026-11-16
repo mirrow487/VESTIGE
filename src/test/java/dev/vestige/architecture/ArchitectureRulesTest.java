@@ -27,17 +27,23 @@ class ArchitectureRulesTest {
     private static final String BASE = "dev.vestige";
 
     /** module -> modules it may import (besides itself, root classes like VestigeIds, and core). */
-    private static final Map<String, Set<String>> ALLOWED_DEPENDENCIES = Map.of(
+    private static final Map<String, Set<String>> ALLOWED_DEPENDENCIES = Map.ofEntries(
             // Root bootstrap (Vestige.java): wires config and the module list only.
-            "", Set.of("config"),
-            "core", Set.of(),
-            "config", Set.of(),
-            "pale", Set.of("config"),
-            "datagen", Set.of("config"),
-            "dev", Set.of(),
+            Map.entry("", Set.of("config")),
+            Map.entry("core", Set.of()),
+            Map.entry("config", Set.of()),
+            Map.entry("pale", Set.of("config")),
+            Map.entry("datagen", Set.of("config", "weapon", "entity", "catalog")),
+            Map.entry("dev", Set.of()),
+            // Gameplay systems (GDD §0: combat first).
+            Map.entry("vitals", Set.of("config")),
+            Map.entry("weapon", Set.of()),
+            Map.entry("combat", Set.of("config", "vitals", "weapon")),
+            Map.entry("entity", Set.of("config", "vitals", "combat")),
+            Map.entry("catalog", Set.of("weapon", "entity")),
             // Test and client layers sit on top of everything common.
-            "gametest", Set.of("*"),
-            "client", Set.of("*"));
+            Map.entry("gametest", Set.of("*")),
+            Map.entry("client", Set.of("*")));
 
     /** Common code must never touch these (it would crash dedicated servers). */
     private static final List<String> CLIENT_ONLY_PREFIXES = List.of(

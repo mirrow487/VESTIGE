@@ -1,0 +1,10 @@
+{
+  "items": [
+    "vestige:hand_maul"
+  ],
+  "class": "maul",
+  "moveset": "vestige:maul",
+  "attack_rating": 72,
+  "poise_damage": 1.0,
+  "weight": 7.0
+}

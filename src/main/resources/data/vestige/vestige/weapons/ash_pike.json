@@ -1,0 +1,10 @@
+{
+  "items": [
+    "vestige:ash_pike"
+  ],
+  "class": "pike",
+  "moveset": "vestige:pike",
+  "attack_rating": 55,
+  "poise_damage": 1.0,
+  "weight": 4.5
+}

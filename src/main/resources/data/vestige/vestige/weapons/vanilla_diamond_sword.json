@@ -1,0 +1,10 @@
+{
+  "items": [
+    "minecraft:diamond_sword"
+  ],
+  "class": "blade",
+  "moveset": "vestige:blade",
+  "attack_rating": 66,
+  "poise_damage": 0.9,
+  "weight": 3.5
+}

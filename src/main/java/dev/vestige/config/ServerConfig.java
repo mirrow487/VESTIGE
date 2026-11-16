@@ -19,6 +19,12 @@ public final class ServerConfig {
     public static final ModConfigSpec.DoubleValue END_BORDER_DIVISOR;
     public static final ModConfigSpec.DoubleValue MIN_SCALED_BORDER_SIZE;
 
+    public static final ModConfigSpec.DoubleValue HEALTH_SCALE;
+    public static final ModConfigSpec.DoubleValue STAMINA_BASE;
+    public static final ModConfigSpec.DoubleValue STAMINA_REGEN_PER_SECOND;
+    public static final ModConfigSpec.IntValue STAMINA_REGEN_DELAY_TICKS;
+    public static final ModConfigSpec.IntValue IFRAME_LATENCY_TOLERANCE;
+
     public static final ModConfigSpec SPEC;
 
     /** A config entry's translation key, display name and tooltip. */
@@ -57,6 +63,38 @@ public final class ServerConfig {
                 .defineInRange("minimumScaledSize", 32.0, 1.0, 1024.0);
 
         b.pop();
+
+        b.comment("Health and stamina (GDD §8).").push("vitals");
+        entries.add(new Entry(key("vitals"), "Vitals", "Health and stamina."));
+        HEALTH_SCALE = b
+                .comment("Multiplier applied to the max health of every living entity and to vanilla damage and healing.",
+                        "VESTIGE combat numbers assume 5 (player = 100 HP). Applied as entities load.")
+                .translation(entry(entries, "vitals.healthScale", "Health Scale",
+                        "Multiplies max health of all creatures and vanilla damage/healing. Combat is balanced for 5."))
+                .defineInRange("healthScale", 5.0, 1.0, 10.0);
+        STAMINA_BASE = b
+                .comment("Base maximum stamina.")
+                .translation(entry(entries, "vitals.staminaBase", "Base Stamina", "Base maximum stamina."))
+                .defineInRange("staminaBase", 100.0, 10.0, 1000.0);
+        STAMINA_REGEN_PER_SECOND = b
+                .comment("Stamina regenerated per second once regeneration starts.")
+                .translation(entry(entries, "vitals.staminaRegen", "Stamina Regeneration", "Stamina regained per second."))
+                .defineInRange("staminaRegen", 32.0, 1.0, 500.0);
+        STAMINA_REGEN_DELAY_TICKS = b
+                .comment("Ticks after spending stamina before it starts to regenerate.")
+                .translation(entry(entries, "vitals.staminaRegenDelay", "Stamina Regeneration Delay", "Ticks before stamina starts regenerating after use."))
+                .defineInRange("staminaRegenDelay", 12, 0, 200);
+        b.pop();
+
+        b.comment("Combat (GDD §7).").push("combat");
+        entries.add(new Entry(key("combat"), "Combat", "Combat timing."));
+        IFRAME_LATENCY_TOLERANCE = b
+                .comment("Ticks a dodge's invincibility window is backdated to compensate for network latency.")
+                .translation(entry(entries, "combat.iframeLatencyTolerance", "Dodge Latency Tolerance",
+                        "Ticks a dodge's invincibility is backdated to compensate for latency."))
+                .defineInRange("iframeLatencyTolerance", 2, 0, 6);
+        b.pop();
+
         SPEC = b.build();
         ENTRIES = Collections.unmodifiableList(entries);
     }

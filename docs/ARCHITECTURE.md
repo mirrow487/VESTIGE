@@ -77,6 +77,18 @@ Method: a throwaway NeoForge project (all candidate dependencies) was compiled. 
 
 **Findings that changed the design** were written back into GDD v1.1 (§0, §6.1, §6.3, §7.2, §7.3, §9.5, §14.2, §29).
 
+### 2.1 Findings during Milestone 3
+
+| Finding | Consequence |
+|---|---|
+| playerAnimator mirrors torso/body yaw and roll relative to vanilla model parts (measured with the `calib` driver scenario) | `PlayerAnimations` negates those channels; pose data uses one convention (`combat.anim.Channel`) |
+| A `SpeedModifier` passed to a `ModifierLayer` constructor before its animation is set is never linked, so the layer reads inactive and nothing plays | One speed modifier per player layer, added with `addModifierLast` |
+| Positive item pitch tips a held item's point forward | Thrust poses use positive item pitch |
+| NeoForge refuses payloads on connections without negotiated channels | `core.Net` guards sends; GameTest players use `NetworkRegistry.configureMockConnection` |
+| The GameTest world is creative, and new server players have 60 ticks of spawn protection | Test players are set to survival and run their light tick 61 times |
+| `/kill` deals `Float.MAX_VALUE`; scaling it ×5 overflowed to Infinity, giving NaN health and an unkillable entity | `HealthScaling.scaleAmount` saturates; regression GameTest |
+| Software rendering is slow, so screenshots landed several ticks late | The client driver slows the game with vanilla `/tick rate` while capturing |
+
 ---
 
 ## 3. Architectural Principles
@@ -108,7 +120,10 @@ Every gameplay system is a **module**: a top-level package under `dev.vestige` w
   3. Module ids must equal package names.
   Adding a dependency between systems is therefore an explicit, reviewed change to that table.
 
-**Implemented in M2:** `core`, `config`, `pale` (cross-dimension border scaling), `datagen`, `dev`, `gametest`, and `client` (entry point and config screen). The tree below is the full target layout; packages are created when their system is implemented, never as empty placeholders.
+**Implemented:**
+- M2: `core`, `config`, `pale` (cross-dimension border scaling), `datagen`, `dev`, `gametest`, `client`.
+- M3: `vitals` (health scale, stamina), `weapon` (items, weapon profiles), `combat` (actions, machine, hits, damage, payloads), `entity` (enemy base class, AI, Hollowed), `catalog` (creative tab, spawn eggs). Client: `client.combat`, `client.anim`, `client.entity`, `client.hud`, `client.fx`, `client.devdriver`. Shared infrastructure in `core`: `SyncedDataTable` (datapack JSON with codecs, reloadable, synced to clients) and `Net` (sends that skip connections lacking VESTIGE channels).
+- Combat details: [systems/combat.md](systems/combat.md). The tree below is the full target layout; packages are created when their system is implemented, never as empty placeholders.
 
 **Target layout:**
 
@@ -367,6 +382,7 @@ Player attack animations are **generated from the same moveset JSON** the server
 | `./gradlew runServer -Psmoke` | Dev dedicated server; logs `VESTIGE SMOKE …` and stops itself |
 | `scripts/prod-server-smoke.sh` | Installs the real NeoForge server and loads the **built JAR** (including Jar-in-Jar libraries) |
 | `scripts/verify.sh` | All of the above in sequence |
+| `scripts/client-driver.sh [combat\|anim\|calib]` | Real client, headless, in a fresh world: scripted combat scenario with `DRIVER CHECK` assertions and screenshots (exits non-zero on failures) |
 | `xvfb-run ./gradlew runClient -PquickPlay=<world>` | Headless client straight into a world (screenshots via ImageMagick `import`) |
 
 See [DEVELOPMENT.md](DEVELOPMENT.md) for details.
@@ -412,6 +428,9 @@ Spark-style profiling is done in M12. GameTests assert worst-case timings for th
 | 008 | Content as datapack JSON, behaviors by registered id | Fast balancing, reloadable, mod-pack friendly | Hard-coded stats |
 | 009 | Server-authoritative outcomes, client-predicted feel with bounded latency tolerance | Responsive and multiplayer-safe | Fully client-authoritative hits (cheatable) |
 | 010 | New-world requirement | World presets apply at creation | Retro-generating existing worlds (unsafe) |
+| 011 | Humanoid enemies use a vanilla `HumanoidModel` posed every frame from the shared `PoseTimeline`; GeckoLib is reserved for non-humanoid creatures and bosses | One pose definition drives players (playerAnimator) and humanoid enemies; keeps the Minecraft look; no extra model files for humanoids | GeckoLib for every enemy (duplicated animation authoring) |
+| 012 | Datapack content goes through `core.SyncedDataTable`; server→client sends go through `core.Net` | One reload/sync path for movesets, weapons and enemies; a connection without VESTIGE channels (another mod's fake player) never crashes a send | Per-table hand-written packets; unguarded `PacketDistributor` calls |
+| 013 | Player combat prediction runs the same `PlayerCombatMachine` as the server | Instant animation on press with near-zero divergence; inputs carry a sequence number for reconciliation | Server-only timing (laggy feel); separate client logic (drift) |
 
 ---
 

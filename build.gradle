@@ -41,6 +41,11 @@ neoForge {
             if (project.hasProperty('quickPlay')) {
                 programArguments.addAll('--quickPlaySingleplayer', project.property('quickPlay').toString())
             }
+            // Scripted client test: ./gradlew runClient -PquickPlay=<world> -Pdriver=combat
+            if (project.hasProperty('driver')) {
+                systemProperty 'vestige.dev.driver', project.property('driver').toString()
+                programArguments.addAll('--width', '1280', '--height', '720')
+            }
         }
         server {
             server()
@@ -69,6 +74,12 @@ neoForge {
         "${mod_id}" {
             sourceSet(sourceSets.main)
         }
+    }
+
+    // JUnit tests run with Minecraft and the mod on the classpath (FML test launcher).
+    unitTest {
+        enable()
+        testedMod = mods."${mod_id}"
     }
 }
 
@@ -127,7 +138,9 @@ tasks.named('test', Test) {
     useJUnitPlatform()
     // Architecture rules scan the source tree.
     systemProperty 'vestige.sourceRoot', project.file('src/main/java').absolutePath
+    systemProperty 'vestige.resourceRoot', project.file('src/main/resources').absolutePath
     inputs.dir('src/main/java')
+    inputs.dir('src/main/resources')
 }
 
 tasks.named('jar', Jar) {

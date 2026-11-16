@@ -1,7 +1,7 @@
 # VESTIGE: Game Design Document
 
 **Platform:** Minecraft Java Edition 1.21.1 · NeoForge · Java 21 · Gradle
-**Document status:** v1.2: design baseline. Milestones 0–2 are complete; gameplay systems start in Milestone 3. Implementation details are in [ARCHITECTURE.md](ARCHITECTURE.md).
+**Document status:** v1.3: design baseline. Milestones 0–3 are complete (combat foundation playable). Implementation details are in [ARCHITECTURE.md](ARCHITECTURE.md).
 
 **Revision history**
 | Version | Milestone | Changes |
@@ -9,6 +9,7 @@
 | 1.0 | M0 | Initial design |
 | 1.1 | M1 | Development priorities (§0), equipment UI from the reference image (§9.5), Nether border divisor 4 (§6.1), Hush generation via biome source (§14.2), stronghold distance (§6.3), stance item swap (§7.3), combat key context (§7.2) |
 | 1.2 | M2 | §27: config options now ship with their systems (current keys listed); §30: milestone status. No gameplay design changes |
+| 1.3 | M3 | §7.3: until the RPG equipment slots exist (M5), holding a combat weapon is the combat stance; §9.1: Common baseline defence formula; §10.2: tier-0 weapons are also craftable; §27: vitals/combat keys; §30: combat moved ahead of core RPG systems at the owner's request (scope unchanged, order only) |
 **Scope note:** This is the design target. Every milestone will cut it into shippable, tested pieces. A feature counts as done only after it has been built and tested in-game.
 
 ---
@@ -333,6 +334,7 @@ Combat binds use a dedicated **combat key-conflict context**: they are active on
 - **Exploration stance:** vanilla hotbar behavior (mine, place, eat, use tools). Attacks use vanilla rules (weak). This is for building.
 - **Combat stance:** the weapon in the **Main Weapon slot** is *physically moved* into the main hand, and the item that was there is stashed in a hidden holding slot. The same happens for the **Secondary slot** and the off-hand. Leaving the stance swaps everything back. The swap is server-authoritative and moves the real item stacks, so nothing can be duplicated, vanilla rendering and attributes keep working, and other mods see a normal held item. LMB and RMB become combat actions; mining and placing are disabled; the hotbar is dimmed. Opening an inventory, dying, logging out, or changing dimension restores the stashed items first.
 - Taking damage or locking on automatically enters combat stance (configurable).
+- *Implementation status (M3):* until the RPG equipment slots exist (M5), holding any item with a weapon profile **is** the combat stance: combat controls are active and vanilla attack/mining is suppressed. The V toggle and slot swap arrive with M5; the combat code already reads the main hand, so nothing changes for combat itself.
 
 ### 7.4 Attack anatomy
 
@@ -528,7 +530,7 @@ All custom enemies share one state machine:
 | Relics (accessories) | 2 → 4 | 3rd after Mother Tallow, 4th after the Resounding |
 | Wick Flask | 1 | Start (fixed) |
 
-- **Armor slots mirror vanilla armor slots.** Equipping head, chest, legs, or boots in the RPG UI uses the vanilla armor slots, so armor renders natively and stays compatible with other mods. Vanilla armor items are valid but translated into VESTIGE stats (a "Common" baseline).
+- **Armor slots mirror vanilla armor slots.** Equipping head, chest, legs, or boots in the RPG UI uses the vanilla armor slots, so armor renders natively and stays compatible with other mods. Vanilla armor items are valid but translated into VESTIGE stats (a "Common" baseline): physical defence = 4 × armor + 2 × armor toughness (implemented in M3 for every entity without VESTIGE stats).
 - **Weapons, rings, talismans, and relics** live in a mod-owned per-player inventory (persisted player data, synced to client).
 - **No duplicate equips:** an item can't occupy two slots. Some accessories are mutually exclusive by **family** (e.g., two roll-modifiers); the UI shows the conflict.
 
@@ -616,7 +618,7 @@ All custom enemies share one state machine:
 
 | Tier | Gate | Weapons (class) | Signature / unique |
 |---|---|---|---|
-| 0 Wanderer | Start | Keepsake Blade, Ash Pike, Hand Maul, Hunting Bow, Plank Buckler | n/a |
+| 0 Wanderer | Start | Keepsake Blade, Ash Pike, Hand Maul, Hunting Bow, Plank Buckler (Blade, Pike and Maul are implemented and craftable at a crafting table; Wren also offers one as the Keepsake) | n/a |
 | 1 Bellbronze | Bellwether | Bellbronze Blade, Bellbronze Pike, Tolling Maul, Handbell (Bell) | **Clapper of the Bellwether** (Maul): heavy attacks ring a Resonance shockwave. Art *Herd Call*: pulls small enemies inward |
 | 2 Wickiron | Mother Tallow | Wickiron Blade, Wickiron Greatblade, Taper Fang, Chandler's Censer | **Mother's Taper** (Censer): clouds harden into wax that slows enemies. Art *Last Light*: ignites all wax for burst Cinder |
 | 2.5 Sculkbone (Hush side-path) | Hush surface | Sculkbone Fang, Murmur Pike | High Hush buildup, low weight, quiet |
@@ -1293,6 +1295,11 @@ All screens share one style kit: slate panels, brass trims, ember highlights, an
 | `border.netherDivisor` | `4.0` | 1–16 | M2 |
 | `border.endDivisor` | `1.0` | 1–16 | M2 |
 | `border.minimumScaledSize` | `32.0` | 1–1024 | M2 |
+| `vitals.healthScale` | `5.0` | 1–10 | M3 |
+| `vitals.staminaBase` | `100.0` | 10–1000 | M3 |
+| `vitals.staminaRegen` | `32.0` per second | 1–500 | M3 |
+| `vitals.staminaRegenDelay` | `12` ticks | 0–200 | M3 |
+| `combat.iframeLatencyTolerance` | `2` ticks | 0–6 | M3 |
 
 Options are added in the same milestone as the system that reads them, so the file never contains switches that do nothing. **Planned** server config (TOML), including at least:
 - `border.initialRadius` (750), `border.expansions` (list per Wick), `border.maxRadius` (6000), `border.center`, `border.expansionSeconds` (60), `border.staticMode` (false).
@@ -1354,8 +1361,8 @@ Each milestone ends with: code written → imports and APIs verified → `./grad
 | 0 | **Game Design Document** ✅ | This document |
 | 1 | **Technical architecture** ✅ | Verified dependency list, package layout, data model (attachments, components, registries), networking map, ADRs for risks 1–14 |
 | 2 | **Project setup** ✅ | Compiling NeoForge 1.21.1 mod, single-JAR release with bundled libraries, run configs, module system with enforced dependency rules, GameTest and unit-test harnesses, verification scripts (dev and production server), config with in-game screen, datagen, cross-dimension border scaling |
-| 3 | **Core RPG systems** | HP ×5 scaling, stamina, Resonance, Glim purse and Ember-Ghost, Wick Flask, Waylights (rest, respawn, travel), HUD |
-| 4 | **Combat system** | Stances, light/heavy combos, rolls with i-frames, guard/parry, poise/stagger/riposte, lock-on, damage formula, 3 weapon classes with arts, enemy AI framework + 2 test enemies (Hollowed, Tolling Ram) |
+| 3 | **Combat foundation** ✅ | (Moved ahead of core RPG systems at the owner's request: combat is priority #2.) Health ×5 and stamina; light combos, chargeable heavies, running and rolling attacks; dodge roll and backstep with i-frames and perfect dodges; hitboxes, hitstop, poise, flinch and stagger; lock-on; enemy telegraphs (glints, decals, cues); readable enemy AI with attack tokens; 3 weapon classes (Blade, Pike, Maul) with animations generated from the same timings as hitboxes; Hollowed and Hollowed Brute; combat HUD; scripted real-client test driver |
+| 4 | **Combat depth + core RPG systems** | Guard, parry and riposte; weapon arts and Resonance; remaining weapon classes (Fang, Censer, Greatblade, Longbow, Bell, shields, Hand Lantern); sprint stamina in combat; Tolling Ram (GeckoLib quadruped) and enemy variety; Glim purse and Ember-Ghost; Wick Flask; Waylights (rest, respawn, travel) |
 | 5 | **Equipment system** | Equipment UI, slots and unlocks, item stat components, burden, reinforcement/reforge (temporary station until Old Rivet exists), first accessories |
 | 6 | **World generation** | The Pale (border control and expansion), rings and mob scaling, Waylight placement, Hearthstead, Belfry Paddock + **Bellwether boss** (first full boss as the template), Chandlery + **Mother Tallow** |
 | 7 | **Hush biome & Warden** | Hush biome, noise system, Hush mobs, Echo Hollows, spread, Listening Post, Containment Lab, Unsung Nave, **Warden of the Unsung**, the Resounding |
@@ -1365,7 +1372,7 @@ Each milestone ends with: code written → imports and APIs verified → `./grad
 | 11 | **Structures & loot** | Remaining structures, secrets, loot tables and modifiers, minibosses, events |
 | 12 | **Balancing & optimization** | Numeric pass across all tiers, profiling (spread, flood-fill, AI), config polish, final JAR, player guide |
 
-*Note on ordering:* the user-specified order is kept. The Bellwether and Mother Tallow land in Milestone 6 because they are the overworld progression's first gates and the boss template every later boss builds on. NPC housing comes in Milestone 10, so early milestones provide temporary access to Old Rivet's services (e.g., a Founder's Anvil fallback) that are moved to the NPC later.
+*Note on ordering:* the user-specified order is kept, except that combat was moved ahead of the core RPG systems at the owner's request in Milestone 3 (no scope removed). The Bellwether and Mother Tallow land in Milestone 6 because they are the overworld progression's first gates and the boss template every later boss builds on. NPC housing comes in Milestone 10, so early milestones provide temporary access to Old Rivet's services (e.g., a Founder's Anvil fallback) that are moved to the NPC later.
 
 ---
 

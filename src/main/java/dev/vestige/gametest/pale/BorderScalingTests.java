@@ -156,4 +156,48 @@ public final class BorderScalingTests {
         h.assertTrue(server.getLevel(Level.NETHER) != null && server.getLevel(Level.END) != null, "nether and end must exist");
         h.succeed();
     }
+
+    /** Disabling at runtime must hand the dependent borders back to vanilla immediately. */
+    @GameTest(template = TEMPLATE, batch = BATCH)
+    public static void disablingRestoresVanillaSizes(GameTestHelper h) {
+        requireScaler(h);
+        MinecraftServer server = h.getLevel().getServer();
+        WorldBorder ow = overworld(h);
+        double old = ow.getSize();
+        try {
+            ow.setSize(2000);
+            PaleModule.setScalingEnabled(server, false);
+            h.assertTrue(PaleModule.scaler().isEmpty(), "scaler should be detached");
+            assertSize(h, "nether after disable", 2000, border(h, Level.NETHER).getSize());
+            assertSize(h, "end after disable", 2000, border(h, Level.END).getSize());
+            ow.setSize(3000);
+            assertSize(h, "nether follows vanilla while disabled", 3000, border(h, Level.NETHER).getSize());
+        } finally {
+            PaleModule.setScalingEnabled(server, true);
+            ow.setSize(old);
+        }
+        assertSize(h, "nether rescaled after re-enable", expected(old, ServerConfig.NETHER_BORDER_DIVISOR.get()), border(h, Level.NETHER).getSize());
+        h.succeed();
+    }
+
+    /** A Pale expansion in progress while scaling is disabled continues unscaled, as vanilla would. */
+    @GameTest(template = TEMPLATE, batch = BATCH)
+    public static void disablingDuringLerpKeepsVanillaLerp(GameTestHelper h) {
+        requireScaler(h);
+        MinecraftServer server = h.getLevel().getServer();
+        WorldBorder ow = overworld(h);
+        double old = ow.getSize();
+        try {
+            ow.setSize(2000);
+            ow.lerpSizeBetween(2000, 4000, 60_000L);
+            PaleModule.setScalingEnabled(server, false);
+            WorldBorder nether = border(h, Level.NETHER);
+            assertSize(h, "nether lerp target after disable", 4000, nether.getLerpTarget());
+            h.assertTrue(nether.getLerpRemainingTime() > 0L, "nether border should still be lerping");
+        } finally {
+            PaleModule.setScalingEnabled(server, true);
+            ow.setSize(old);
+        }
+        h.succeed();
+    }
 }

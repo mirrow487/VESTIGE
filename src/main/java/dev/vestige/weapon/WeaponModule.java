@@ -1,0 +1,29 @@
+package dev.vestige.weapon;
+
+import dev.vestige.VestigeIds;
+import dev.vestige.core.VestigeModule;
+import net.minecraft.world.item.Item;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.registries.DeferredItem;
+import net.neoforged.neoforge.registries.DeferredRegister;
+
+/** Weapon items and weapon stat profiles (GDD §10). */
+public final class WeaponModule implements VestigeModule {
+    public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(VestigeIds.MOD_ID);
+
+    // Tier 0 "Wanderer" weapons (GDD §10.2). Stats live in data/vestige/vestige/weapons/*.json.
+    public static final DeferredItem<Item> KEEPSAKE_BLADE = ITEMS.registerSimpleItem("keepsake_blade", new Item.Properties().stacksTo(1));
+    public static final DeferredItem<Item> ASH_PIKE = ITEMS.registerSimpleItem("ash_pike", new Item.Properties().stacksTo(1));
+    public static final DeferredItem<Item> HAND_MAUL = ITEMS.registerSimpleItem("hand_maul", new Item.Properties().stacksTo(1));
+
+    @Override
+    public String id() {
+        return "weapon";
+    }
+
+    @Override
+    public void init(IEventBus modBus, IEventBus gameBus) {
+        ITEMS.register(modBus);
+        WeaponProfiles.TABLE.register(modBus, gameBus);
+    }
+}

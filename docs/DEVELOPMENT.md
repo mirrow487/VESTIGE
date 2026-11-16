@@ -26,11 +26,24 @@ The release JAR is `build/libs/vestige-<version>.jar`. It bundles GeckoLib and p
 
 | Layer | Command | Checks |
 |---|---|---|
-| Unit tests | `./gradlew test` (part of `build`) | Pure logic (no game classes), plus `ArchitectureRulesTest` |
+| Unit tests | `./gradlew test` (part of `build`) | Logic, data consistency and `ArchitectureRulesTest`; runs with Minecraft on the classpath (ModDevGradle unit-test mode), no world |
 | GameTests | `./gradlew runGameTestServer` | Game logic on a real server. Tests live in `dev.vestige.gametest.<module>` |
 | Dev server smoke | `./gradlew runServer -Psmoke` | Mod loads on a dedicated server (catches client-class leaks); logs `VESTIGE SMOKE …` and stops |
 | Production server smoke | `scripts/prod-server-smoke.sh` | Installs the real NeoForge server into `prod-server/`, loads the **built JAR**, and checks startup |
 | Headless client | see below | HUD, UI, models, animations by screenshot |
+
+### Scripted client test (dev driver)
+```bash
+scripts/client-driver.sh combat   # full combat scenario: HUD, attacks, rolls, weapons, lock-on, enemies, config UI
+scripts/client-driver.sh anim     # one attack, for quick animation iteration
+scripts/client-driver.sh calib    # single-axis test poses, to check rotation conventions
+```
+The driver (`client.devdriver.DevDriver`) only exists when `-Dvestige.dev.driver=<scenario>` is set. It presses real combat inputs, runs server commands, logs `DRIVER CHECK PASS/FAIL` lines and saves screenshots to `runs/client/screenshots/`. Each run uses a fresh copy of `runs/server/world`.
+
+### Generated content
+- `python3 -I tools/gen_combat_data.py`: movesets, weapons, enemies, damage types, tags, spawns, loot, recipes (edit the numbers here, not the JSON).
+- `python3 -I tools/gen_textures.py`: item, mob, particle and HUD textures.
+- `python3 -I tools/gen_empty_structure.py <out.nbt> [size]`: GameTest templates.
 
 ### Headless client
 ```bash
@@ -53,6 +66,7 @@ Put `onboardAccessibility:false` in `runs/client/options.txt` to skip the first-
 8. Update the GDD if the design changed, and ARCHITECTURE if the implementation approach changed.
 
 ## Conventions
+- Combat timing, animation poses and their conventions: [systems/combat.md](systems/combat.md).
 - Time is measured in **ticks** (20 per second).
 - Game-class-free math goes in its own class so it can be unit-tested (example: `pale.BorderScaling`).
 - Never reference `net.minecraft.client` or `dev.vestige.client` from common code. The build fails if you do.

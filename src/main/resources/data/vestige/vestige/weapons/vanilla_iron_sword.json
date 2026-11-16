@@ -1,0 +1,10 @@
+{
+  "items": [
+    "minecraft:iron_sword"
+  ],
+  "class": "blade",
+  "moveset": "vestige:blade",
+  "attack_rating": 52,
+  "poise_damage": 0.9,
+  "weight": 3.0
+}

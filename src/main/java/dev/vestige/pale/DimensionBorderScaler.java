@@ -63,6 +63,28 @@ public final class DimensionBorderScaler implements BorderChangeListener {
         }
     }
 
+    /**
+     * Puts every dependent border back into the state vanilla's delegates would have produced
+     * (the Overworld size, unscaled, including an in-progress lerp). Called when scaling is
+     * switched off at runtime, after this listener has been detached; without it the dependent
+     * borders would stay at their last scaled size until the Overworld border next changed.
+     */
+    public void restoreVanilla() {
+        WorldBorder source = server.overworld().getWorldBorder();
+        long remaining = source.getLerpRemainingTime();
+        for (ServerLevel level : server.getAllLevels()) {
+            if (divisorFor(level.dimension()).isEmpty()) {
+                continue;
+            }
+            WorldBorder target = level.getWorldBorder();
+            if (remaining > 0L) {
+                target.lerpSizeBetween(source.getSize(), source.getLerpTarget(), remaining);
+            } else {
+                target.setSize(source.getSize());
+            }
+        }
+    }
+
     @Override
     public void onBorderSizeSet(WorldBorder border, double size) {
         for (ServerLevel level : server.getAllLevels()) {

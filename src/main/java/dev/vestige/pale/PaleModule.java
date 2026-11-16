@@ -61,6 +61,22 @@ public final class PaleModule implements VestigeModule {
         if (scaler != null) {
             server.overworld().getWorldBorder().removeListener(scaler);
             installed = null;
+            scaler.restoreVanilla();
+            VestigeIds.LOG.info("Dimension border scaling disabled; Nether/End borders restored to vanilla behaviour");
+        }
+    }
+
+    /**
+     * Turns scaling on or off for a running server. Must be called on the server thread.
+     * Used by the config-reload handler and by GameTests.
+     */
+    public static void setScalingEnabled(MinecraftServer server, boolean enabled) {
+        if (enabled && installed == null) {
+            install(server);
+        } else if (!enabled && installed != null) {
+            uninstall(server);
+        } else if (installed != null) {
+            installed.applyNow();
         }
     }
 
@@ -77,15 +93,6 @@ public final class PaleModule implements VestigeModule {
             return;
         }
         // Config reload arrives off the server thread; apply on it.
-        server.execute(() -> {
-            boolean enabled = ServerConfig.SCALE_DIMENSION_BORDERS.get();
-            if (enabled && installed == null) {
-                install(server);
-            } else if (!enabled && installed != null) {
-                uninstall(server);
-            } else if (installed != null) {
-                installed.applyNow();
-            }
-        });
+        server.execute(() -> setScalingEnabled(server, ServerConfig.SCALE_DIMENSION_BORDERS.get()));
     }
 }

@@ -1,0 +1,104 @@
+{
+  "actions": {
+    "overhead_slam": {
+      "timing": {
+        "windup": 22,
+        "active": 3,
+        "recovery": 26,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 5
+      },
+      "power": {
+        "stamina": 0,
+        "motion_value": 1.0,
+        "poise_damage": 0,
+        "damage": 40
+      },
+      "pose": "brute_slam",
+      "hyperarmor": true,
+      "hit": {
+        "type": "circle",
+        "radius": 1.8,
+        "offset": 1.6,
+        "y_min": -0.5,
+        "y_max": 1.6
+      },
+      "telegraph": {
+        "glint": "red",
+        "lead": 8,
+        "decal": {
+          "type": "circle",
+          "radius": 1.8,
+          "offset": 1.6
+        }
+      },
+      "tracking": 15
+    },
+    "sweep": {
+      "timing": {
+        "windup": 16,
+        "active": 4,
+        "recovery": 18,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 3
+      },
+      "power": {
+        "stamina": 0,
+        "motion_value": 1.0,
+        "poise_damage": 0,
+        "damage": 30
+      },
+      "pose": "brute_sweep",
+      "hyperarmor": true,
+      "hit": {
+        "type": "arc",
+        "reach": 3.0,
+        "from": 80,
+        "to": -80,
+        "y_min": 0.0,
+        "y_max": 2.2
+      },
+      "telegraph": {
+        "glint": "white",
+        "lead": 6
+      },
+      "tracking": 20
+    },
+    "flinch": {
+      "timing": {
+        "windup": 0,
+        "active": 0,
+        "recovery": 12,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 0
+      },
+      "power": {
+        "stamina": 0,
+        "motion_value": 1.0,
+        "poise_damage": 0,
+        "damage": 0
+      },
+      "pose": "flinch"
+    },
+    "stagger": {
+      "timing": {
+        "windup": 0,
+        "active": 0,
+        "recovery": 50,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 0
+      },
+      "power": {
+        "stamina": 0,
+        "motion_value": 1.0,
+        "poise_damage": 0,
+        "damage": 0
+      },
+      "pose": "stagger"
+    }
+  }
+}

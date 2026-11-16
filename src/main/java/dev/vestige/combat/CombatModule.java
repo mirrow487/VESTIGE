@@ -1,0 +1,63 @@
+package dev.vestige.combat;
+
+import dev.vestige.VestigeIds;
+import dev.vestige.combat.net.CombatNetwork;
+import dev.vestige.combat.player.PlayerCombat;
+import dev.vestige.combat.player.PlayerCombatState;
+import dev.vestige.core.VestigeModule;
+import dev.vestige.vitals.VitalsModule;
+import java.util.function.Supplier;
+import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.attachment.AttachmentType;
+import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
+import net.neoforged.neoforge.event.tick.PlayerTickEvent;
+import net.neoforged.neoforge.registries.DeferredRegister;
+import net.neoforged.neoforge.registries.NeoForgeRegistries;
+
+/** Elden Ring-inspired combat runtime (GDD §7): actions, hits, dodges, damage. */
+public final class CombatModule implements VestigeModule {
+    private static final DeferredRegister<AttachmentType<?>> ATTACHMENTS =
+            DeferredRegister.create(NeoForgeRegistries.ATTACHMENT_TYPES, VestigeIds.MOD_ID);
+
+    /** Transient (unsaved) combat state per player. */
+    public static final Supplier<AttachmentType<PlayerCombatState>> PLAYER_STATE =
+            ATTACHMENTS.register("player_combat", () -> AttachmentType.builder(() -> new PlayerCombatState()).build());
+
+    private static final DeferredRegister<net.minecraft.core.particles.ParticleType<?>> PARTICLES =
+            DeferredRegister.create(net.minecraft.core.registries.Registries.PARTICLE_TYPE, VestigeIds.MOD_ID);
+
+    /** Telegraph glints (GDD §7.12): white = parriable, red = roll it. */
+    public static final Supplier<net.minecraft.core.particles.SimpleParticleType> GLINT_WHITE =
+            PARTICLES.register("glint_white", () -> new net.minecraft.core.particles.SimpleParticleType(true));
+    public static final Supplier<net.minecraft.core.particles.SimpleParticleType> GLINT_RED =
+            PARTICLES.register("glint_red", () -> new net.minecraft.core.particles.SimpleParticleType(true));
+
+    @Override
+    public String id() {
+        return "combat";
+    }
+
+    @Override
+    public void init(IEventBus modBus, IEventBus gameBus) {
+        ATTACHMENTS.register(modBus);
+        PARTICLES.register(modBus);
+        CombatData.MOVESETS.register(modBus, gameBus);
+        modBus.addListener(CombatNetwork::register);
+        gameBus.addListener(CombatModule::onPlayerTick);
+        gameBus.addListener(CombatModule::onIncomingDamage);
+        VitalsModule.setBusyCheck(PlayerCombat::busy);
+    }
+
+    private static void onPlayerTick(PlayerTickEvent.Post event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            PlayerCombat.serverTick(player);
+        }
+    }
+
+    private static void onIncomingDamage(LivingIncomingDamageEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player && PlayerCombat.dodges(player, event.getSource())) {
+            event.setCanceled(true);
+        }
+    }
+}
