@@ -36,6 +36,7 @@ Implements GDD §6.6 (Waylights), §8.4 (Wick Flask), §8.5 (death, Glim and the
 - **Charge timing:** the charge is taken on the first healing tick. A hit during the raise costs nothing, while a hit mid-drink stops the healing.
 - **With no charges,** H plays `flask_empty`: a futile shake by the ear.
 - **Refills** happen on resting at a Waylight and on respawning.
+- **Kindling** (M5) is raised at Waylights with a Kindling Ember and Glim, and Lamplight adds to each sip. Resting also cures statuses and Voidbite.
 - **Flask Wick** (item): use to add a charge, up to 10. Until dungeons and bosses exist (M6, M11) it comes from the creative tab.
 - **Visuals and HUD:**
   - the 3D flask (ember liquid, wax-sealed neck, smouldering wick) is drawn in the left hand while drinking (`FlaskLayer`);
@@ -45,7 +46,7 @@ Implements GDD §6.6 (Waylights), §8.4 (Wick Flask), §8.5 (death, Glim and the
 
 - **The block:** a lantern on a stone plinth (`tools/gen_item_models.py`). It gives light 14 when lit and 3 when not, smokes when cold, and drifts embers when lit. It cannot be broken outside creative and is never crafted (GDD §6.6).
 - **Lighting:** using a Waylight you haven't lit lights it and records the discovery for you (per player). The **"WAYLIGHT KINDLED"** title shows its name: the block entity's name, an anvil-named item, or "<Biome> Waylight".
-- **The menu** (using a lit Waylight): a slate panel with Rest, Travel and Leave. A refusal is shown as a reason, not just a greyed button.
+- **The menu** (using a lit Waylight): a slate panel with Rest, Travel, **Attune** and **Kindle Flask** (both since M5, see [equipment.md](equipment.md)) and Leave. A refusal is shown as a reason, not just a greyed button.
 - **Rest:**
   - sets the respawn point beside the Waylight;
   - refills the flask and restores health and stamina;

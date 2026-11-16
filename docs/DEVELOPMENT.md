@@ -44,6 +44,9 @@ scripts/client-driver.sh ram      # Tolling Ram poses and death, then a live cha
 scripts/client-driver.sh rpg      # Waylights (light, menu, travel, rest), Wick Flask, Glim, death -> Ember-Ghost -> reclaim
 scripts/client-driver.sh models   # GeckoLib enemy models: poses front/side, death
 scripts/client-driver.sh lock     # lock-on reticle against a stationary target
+scripts/client-driver.sh equipment # equipment screen + tooltips, real shift-click equipping, 3 armor sets (front/back/side/first person),
+                                   # stance + HUD cross, Pale Hook, Windsail glide, status HUD, Attunement, Kindling
+scripts/multiplayer-test.sh        # dedicated server + two clients (Dev, Dev2): equipment sync, forged-packet refusal, stance seen by others
 ```
 The driver (`client.devdriver.DevDriver`) only exists when `-Dvestige.dev.driver=<scenario>` is set. It presses real combat inputs, runs server commands, logs `DRIVER CHECK PASS/FAIL` lines and saves screenshots to `runs/client/screenshots/`. Each run uses a fresh copy of `runs/server/world`.
 

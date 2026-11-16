@@ -9,15 +9,22 @@ Reclaim a dying world one boss at a time: Terraria-style progression, Elden Ring
 - ✅ Milestone 1: Technical architecture (toolchain and API assumptions verified)
 - ✅ Milestone 2: Project setup (module system, build, tests, single-JAR release)
 - ✅ Milestone 3: Combat foundation (attacks, combos, charge, dodge, stamina, lock-on, telegraphed enemies)
-- ⏭ Milestone 4: Combat depth + core RPG systems
+- ✅ Milestone 4: Combat depth + core RPG systems (guard, parry, arts, Resonance, all weapon classes, Glim, Wick Flask, Waylights)
+- ✅ Milestone 5: Equipment system (equipment screen, armor sets, accessories, attributes and Attunement, damage types and statuses)
+- ⏭ Milestone 6: World generation and the first bosses
 
-## Controls (while holding a weapon)
+## Controls
 | Action | Default key |
 |---|---|
 | Light attack (combo) | Left mouse |
 | Heavy attack (hold to charge) | R |
 | Dodge roll / backstep (no direction) | Left Alt |
 | Lock on / switch target | Middle mouse / scroll |
+| Weapon art | F |
+| Wick Flask | H |
+| Equipment screen | I |
+| Combat stance (wield Main + Secondary) | V |
+| Use relic / next relic | G / Y |
 
 ## Build
 ```bash
@@ -30,3 +37,5 @@ scripts/verify.sh        # build + unit tests + GameTests + dev and production s
 - [Technical Architecture](docs/ARCHITECTURE.md)
 - [Development Guide](docs/DEVELOPMENT.md)
 - [Combat System](docs/systems/combat.md)
+- [Core RPG Systems](docs/systems/rpg.md)
+- [Equipment, Attributes and Damage Types](docs/systems/equipment.md)

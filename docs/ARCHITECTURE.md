@@ -124,6 +124,12 @@ Every gameplay system is a **module**: a top-level package under `dev.vestige` w
 **Implemented:**
 - M2: `core`, `config`, `pale` (cross-dimension border scaling), `datagen`, `dev`, `gametest`, `client`.
 - M4: `player` (Glim, Wick Flask, Ember-Ghost, Run Mode; depends on config, vitals, combat, entity) and `waylight` (block, registry, rest, travel; depends on config, vitals, combat, player). The combat module stays independent of both: the flask reaches the action machine through `PlayerCombat.setFlaskCheck`, the same hook pattern as `VitalsModule.setRegenFactor`.
+- M5: `stats` (pure rules with no dependencies: `DamageType`, `DamageSpread`, `Attribute`, `AttributeRules`, `Grade`, `StatusType`, `Burden`, `Rarity`, `Perks`, `StatSheet`, and the `Stats` hook) and `equipment` (attachments, data tables, `StatCalculator`, `EquipmentStats`, `Stance`, `EquipmentRules`, `Attunement`, the menu and its payloads, armor items; depends on config, vitals, weapon, combat, player, waylight, stats). `weapon`, `vitals`, `combat`, `entity`, `player` and `waylight` now also depend on `stats`, never on `equipment`. Equipment reaches them only through hooks it installs at init:
+  - `Stats.install(EquipmentStats::of)`: the stat sheet for any player;
+  - `PlayerCombat.setLedgerHook`: the Glim cost of the Ledger of Debts;
+  - `EquipmentArmor.rendererFactory`: the client armor renderer, kept out of common code.
+
+  Client: `client.equipment` (screen, Attunement, tooltips, keys, armor rendering, relic movement). Details: [systems/equipment.md](systems/equipment.md).
 - M3: `vitals` (health scale, stamina), `weapon` (items, weapon profiles), `combat` (actions, machine, hits, damage, payloads), `entity` (enemy base class, AI, Hollowed), `catalog` (creative tab, spawn eggs). Client: `client.combat`, `client.anim`, `client.entity`, `client.hud`, `client.fx`, `client.devdriver`. Shared infrastructure in `core`: `SyncedDataTable` (datapack JSON with codecs, reloadable, synced to clients) and `Net` (sends that skip connections lacking VESTIGE channels).
 - Combat details: [systems/combat.md](systems/combat.md). The tree below is the full target layout; packages are created when their system is implemented, never as empty placeholders.
 
@@ -199,7 +205,9 @@ docs/                             // GDD, ARCHITECTURE, per-system docs
 |---|---|---|---|---|---|
 | `vitals` | stamina, maxStaminaBonus, resonance, flaskCharges, flaskMax, kindling, emberHearts, resonantHearts, breathStones | ✅ | ✅ | ✅ | ❌ |
 | `glim` | carried Glim | ✅ | ✅ (0 after death, ghost holds it) | ✅ | ❌ |
-| `rpg_inventory` | Main, Secondary, swap set, Rings[2], Talismans[2], Relics[4], stance stash (main and off-hand) | ✅ | ✅ (always kept) | ✅ | ✅ (visuals) |
+| `rpg_inventory` | Main, Secondary, Rings[2], Talismans[2], Relics[4], active relic, stance flag, stance slot, stance stash (main and off-hand) | ✅ | ✅ (always kept) | ✅ | ❌ *(M5: other players see the stance weapons through vanilla held-item sync; the private slots stay private. Swap set: M6)* |
+| `attributes` *(M5)* | the six attribute values | ✅ | ✅ | ✅ | ❌ |
+| `status` *(M5, any living entity)* | status meters, timers, Voidbite flag | ✅ | ❌ | ✅ | ❌ |
 | `combat_state` | current action id, phase, tick, stance, lock target id, poise | ❌ (transient) | ❌ | ✅ | ✅ (for animation) |
 | `discovery` | lit Waylights, discovered structures, secrets, bestiary counts, lore | ✅ | ✅ | ✅ | ❌ |
 | `quests` | active and completed quests, objective progress | ✅ | ✅ | ✅ | ❌ |
@@ -227,6 +235,8 @@ Rules: mutate through a service class only (`Vitals.spendStamina(player, n)`), a
 | `vestige:etching` | Non-unique weapons | art override id |
 
 Base stats live in datapack JSON (`data/vestige/weapons/*.json`) keyed by item id, so balancing needs no code change. Components hold only per-stack state (reinforcement, prefix, etching).
+
+*M5 implementation:* the base stats live only in synced data tables keyed by item id: `vestige/weapons`, `vestige/armor`, `vestige/accessories` and `vestige/armor_sets`. No component exists yet, because no per-stack state does. `vestige:reinforcement` and `vestige:prefix` arrive with reinforcement and reforging in M6.
 
 ### 5.4 Data-driven content (reloadable)
 
@@ -300,6 +310,11 @@ Vanilla sources (fall, lava, vanilla mobs) × hpScale (5) in LivingIncomingDamag
 - **Stance swap** is server-side and atomic. On entering combat stance: `stash.main ← hotbar[selected]`, `hotbar[selected] ← rpg.main`, and the same for the off-hand. Leaving reverses it. While in stance, the selected hotbar index is locked, and `ItemTossEvent` is cancelled and restored for the swapped stacks. The swap is reversed on: opening any container, death (before drops), logout, dimension change, and server stop. A GameTest suite covers each path for no-duplication and no-loss.
 - **StatSheet** is recomputed when equipment changes (not every tick). It is applied through attribute modifiers (`MAX_HEALTH`, `MOVEMENT_SPEED`) and cached values (absorptions, poise, burden, roll profile).
 - **AccessoryEffect** registry: an id → behavior object with hooks (`onHit`, `onDodge`, `onTick`, `modifyStats`, `onDamaged`). Families are used for exclusivity.
+- *M5 implementation:*
+  - **Stat changes:** numeric effects are `StatMods` in data (summed by `StatCalculator`).
+  - **Rule-changing effects:** these are **perk ids** (`stats.Perks`) checked where the rule lives, e.g. the Hollow Ring in the roll choice, the Waxen Ring in parry handling, the Toll in the weapon-hit event. A separate registry would have been an indirection with one implementation per id.
+  - **Recomputing the stat sheet:** it is cached by a fingerprint of equipment, attributes, stance and data generation, and rebuilt on change on both sides.
+  - **Applying it:** max health uses the `vestige:vitality` modifier (ADD_VALUE of bonus ÷ health scale); the Spurs and Diver's Bell use transient attribute modifiers.
 
 ### 7.4 The Pale (GDD §6.1, ADR-003)
 
@@ -344,6 +359,11 @@ Vanilla sources (fall, lava, vanilla mobs) × hpScale (5) in LivingIncomingDamag
 
 ### 7.11 Client UI kit (GDD §9.5)
 A reusable tile kit modeled on the owner's Elden Ring reference: `Tile` (24 and 28 px variants with vignette, frame, ghost silhouette, hairline rule, serif count), `Cluster` layout, a `Tooltip` frame, and the `ReadinessCross` (shared by the equipment screen and the HUD). It uses nine-slice textures generated by `tools/` so every screen is visually consistent.
+
+*M5 implementation:*
+- The tile is drawn procedurally (`EquipmentScreen.tile`: gradient slate, stone frame, shadow line, rarity rule, chained variant), not from nine-slice textures. It scales cleanly with GUI scale, and the Attunement screen and the HUD cross share it.
+- Ghost silhouettes are 9×9 pixel masks.
+- Text uses the vanilla font.
 
 ### 7.12 Configuration
 `ModConfigSpec` server config (border, rings, Hush, combat, death mode, NPC, bosses, quests) and client config (HUD, camera smoothing, damage numbers). Listed in GDD §27.
@@ -398,6 +418,11 @@ See [DEVELOPMENT.md](DEVELOPMENT.md) for details.
 
 ### 9.3 Dev test driver
 No input automation tool is installed, so a **dev-only** client driver (enabled by a system property in the `client` run config, compiled out of release behavior) runs scripted sequences: spawn dummy, enter stance, attack, roll, open screen, then capture screenshots through Minecraft's own `Screenshot.grab`. This makes visual checks deterministic and repeatable. **[verify Screenshot API in M3]**
+
+*M5:*
+- **Scenarios:** an `equipment` scenario, plus `mp_a` and `mp_b` for `scripts/multiplayer-test.sh`. That script runs a dev dedicated server (offline mode, flat world, both test players as operators) and two clients: the `client` and `client2` run configs, the second with its own game directory and the name "Dev2".
+- **Hover tooltips** are captured by moving the real cursor position (dev-only reflection on `MouseHandler`).
+- **Menu clicks** are real `handleInventoryMouseClick` calls.
 
 ---
 

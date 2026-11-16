@@ -11,6 +11,7 @@
 | 1.2 | M2 | §27: config options now ship with their systems (current keys listed); §30: milestone status. No gameplay design changes |
 | 1.3 | M3 | §7.3: until the RPG equipment slots exist (M5), holding a combat weapon is the combat stance; §9.1: Common baseline defence formula; §10.2: tier-0 weapons are also craftable; §27: vitals/combat keys; §30: combat moved ahead of core RPG systems at the owner's request (scope unchanged, order only) |
 | 1.4 | M4 | §7.7: weapon guard without a shield (absorption 0.55, stability 30); parried enemies reel 45 ticks (the riposte window); guard break lasts 24 ticks; backstabs need only a position behind the target until enemy awareness exists (M7 noise system); §8.3: Resonance thresholds (Resonant ≥50: +20% poise damage; Crescendo 100: next art +30% damage), +2 on block, −10 when hit unblocked; §25: weapons and enemies use 3D models (GeckoLib enemies, element-model weapons; flat sprites stay in the inventory); §8.2: armed sprinting costs 6 stamina/s (stage 2); §10.2: the stage 2 class weapons (Taper Fang, Wickiron Greatblade, Chandler's Censer, Handbell) are implemented without recipes until their gates exist (M6); Iron Kite Shield and Timber Bulwark added as craftable tier-0 shields; Hunting Bow uses inventory arrows; §7.11: Smolder Wake's cloud (radius 4) is wider than its spin, Quickstep's keen hit is a ×1.5 critical (riposte motion value on reeling targets); §30: the Hand Lantern moves to M7, where its light radius and Hushed reduction have systems to act on; §6.6: resting also restores health and stamina and is refused with an enemy within 12 blocks; Waylights are named after their biome when first lit; §8.4: the flask charge is taken on the first healing tick (a hit during the raise costs nothing); an empty flask plays a shake; §8.5: Run Mode is a server option (Wayfarer default, Pilgrim), Ashen comes with world presets; §23.1: kill Glim = profile value for VESTIGE enemies, a twentieth of scaled max health for vanilla hostiles |
+| 1.5 | M5 | **§5.3, §8.6, §23.1: character attributes raised with Glim (Attunement at Waylights), at the owner's request.** This deliberately reverses "Why not levels?" and "Glim is not used for leveling". Gear, pickups and slot unlocks remain the larger power source. Attributes: Vitality, Endurance, Strength, Dexterity, **Cadence** (the Intelligence role: sound and silence) and **Lamplight** (the Faith role), base 10, max 60, soft-capped; level defence +0.5 per level. §7.10: each damage type has a gameplay identity (table in §7.10). Gilded and Frostbind wait for their content (M8, frozen structures); Scorch reduces all healing by 30%, not only the flask. §8.4: until the Heartlamp exists, Kindling happens at Waylights for a Kindling Ember plus Glim (instead of Tallow wax). §9.1: the Secondary swap set comes with the Bellwether (M6). §9.4: reinforcement and reforging move to M6, with the Founder's Anvil and Temper Shards from the first dungeons; the M5 request redefined the milestone around equipment, attributes and damage types (no scope removed). §9.5: the screen is laid out for a 240-unit-tall GUI (stats in a right column, absorption and set bonuses beside the inventory), uses 20-px tiles (26-px for Main and Secondary) and the vanilla font (no custom serif numerals). §12: Tithe Ring = +8 Resonance per kill (Glim comes from kills); Talisman of the Grove = +3 HP/s out of combat. §11 and §12: until their bosses and structures exist, sets and accessories come from vanilla chest loot (NeoForge loot modifiers) and Kindling Embers from the Brute and Ram |
 **Scope note:** This is the design target. Every milestone will cut it into shippable, tested pieces. A feature counts as done only after it has been built and tested in-game.
 
 ---
@@ -221,6 +222,8 @@ The player's power comes from:
 
 Vanilla XP stays for enchanting and repair only. It never increases combat stats.
 
+*Revision 1.5 (owner request, M5):* the player also has **six attributes raised with Glim** at Waylights (§8.6). The list above still provides most of the power. Attributes shape the build (which weapons scale, how much load you carry, how fast arts and flasks work) more than they raise raw numbers. The soft caps keep a level-60 character only modestly ahead of a level-1 character in the same gear.
+
 ---
 
 ## 6. The World: Rings, the Pale, and Biomes
@@ -336,6 +339,7 @@ Combat binds use a dedicated **combat key-conflict context**: they are active on
 - **Combat stance:** the weapon in the **Main Weapon slot** is *physically moved* into the main hand, and the item that was there is stashed in a hidden holding slot. The same happens for the **Secondary slot** and the off-hand. Leaving the stance swaps everything back. The swap is server-authoritative and moves the real item stacks, so nothing can be duplicated, vanilla rendering and attributes keep working, and other mods see a normal held item. LMB and RMB become combat actions; mining and placing are disabled; the hotbar is dimmed. Opening an inventory, dying, logging out, or changing dimension restores the stashed items first.
 - Taking damage or locking on automatically enters combat stance (configurable).
 - *Implementation status (M3):* until the RPG equipment slots exist (M5), holding any item with a weapon profile **is** the combat stance: combat controls are active and vanilla attack/mining is suppressed. The V toggle and slot swap arrive with M5; the combat code already reads the main hand, so nothing changes for combat itself.
+- *Implementation status (M5):* **V** performs the real-stack swap described above (server-authoritative, with forced exits on death, logout, dimension change, container open and server stop). Holding a weapon outside the stance still fights, so hotbar weapons keep working. Entering stance automatically on damage or lock-on is left for the M12 configuration polish.
 
 ### 7.4 Attack anatomy
 
@@ -427,6 +431,19 @@ situational: counter-hit ×1.15, stagger critical uses riposte MV, guard → shi
 
 **Weaknesses (examples):** Hush creatures take ×1.5 from Resonance and ×1.25 from Radiance. Nether creatures take ×0.5 from Cinder and ×1.25 from Hush. Void creatures take ×1.3 from Radiance. Wax enemies take ×1.4 from Cinder, but their wick explodes faster.
 
+**Damage type identities** (M5): each type changes how a fight plays, not only its numbers:
+
+| Type | Identity |
+|---|---|
+| Slash | Builds Rend (0.2× damage) |
+| Strike | +50% poise damage; a blocked Strike costs 1.4× guard stamina |
+| Pierce | Counter-hit ×1.25 against a target in its windup or active frames |
+| Cinder | Builds Scorch (0.6×) |
+| Resonance | +0.8× its damage as poise damage; shields absorb only half of it |
+| Hush | Ignores half of the target's defence; builds Hushed (0.6×); a Hushed enemy takes +10% damage and recovers no poise |
+| Void | Ignores absorption; builds Voidbite (0.5×) |
+| Radiance | ×1.3 against pale, hush and void families; the attacker heals 4% of the Radiance dealt |
+
 **Status buildups** (fill a meter; trigger when it reaches 100%):
 
 | Status | Effect |
@@ -503,6 +520,7 @@ All custom enemies share one state machine:
 - Starts with 3 charges. **Flask Wicks** add +1 each (max 10); they come from dungeons, boss drops, and quests.
 - Refills only at Waylights or at the Heartlamp.
 - **Kindling** upgrades (+1 to +5, at the Heartlamp with Tallow wax) raise the heal to 60%.
+- *Implementation status (M5):* until the Heartlamp (M6) and Mother Tallow's wax exist, Kindling is done at any lit Waylight for one **Kindling Ember** (dropped by Brutes and Rams, found in dungeon chests) plus 400 × (level + 1) Glim. Lamplight adds up to +15% of max HP to each sip.
 
 ### 8.5 Death and Glim
 - **Glim** is the currency (see §23). On death, your carried Glim is left as an **Ember-Ghost** where you died. Touch it to recover. Die again first and it's gone.
@@ -511,6 +529,13 @@ All custom enemies share one state machine:
   - **Pilgrim:** non-equipped inventory drops (vanilla-like).
   - **Ashen:** hardcore; one life.
 - Bosses fully reset if all players in the arena die.
+
+### 8.6 Attributes and Attunement *(revision 1.5)*
+- **Six attributes**, base 10, max 60: **Vitality** (health), **Endurance** (stamina, equip capacity, poise), **Strength** and **Dexterity** (physical scaling, per weapon grade), **Cadence** (Resonance, Hush and Void scaling, art damage, Resonance gain) and **Lamplight** (Cinder and Radiance scaling, flask healing, status resistance).
+- **Level** = 1 + points spent. Each point costs `round(120 + 18L + 0.9L² + 0.004L³)` Glim (139 at level 1, about 1,600 at level 30). Points are bought at a lit Waylight (**Attune**) with a projection of every derived number, then paid at once.
+- **Scaling:** a soft-capped curve (0.35 at 20, 0.80 at 40, 1.0 at 60) × the weapon's grade (S 1.4 … E 0.15). An unmet requirement sets the weapon to 60% attack rating.
+- **Defence from level:** +0.5 flat defence per level after the first.
+- Points are permanent; respec arrives with the NPC services (M10).
 
 ---
 
@@ -605,6 +630,13 @@ All custom enemies share one state machine:
 - **Text style:** section labels in small caps, parchment color (#d9cfb8) at 70% opacity; values at full opacity; ember (#e08a3c) only for highlights (set bonuses active, upgrades).
 - **Tooltips:** dark tile-style frame. Comparison mode shows green/red deltas against the equipped item.
 - **The HUD uses the same cross:** a 4-tile Readiness Cross at the bottom-left (Main / Secondary / Relic / Flask with charges), like the reference.
+- *Implementation (M5):* the screen keeps every element above but is arranged to fit a 240-unit-tall GUI (720p at GUI scale 3):
+  - the stats move into a right-hand column;
+  - absorption and set bonuses flank the inventory grid;
+  - tiles are 20 px (26 px for Main and Secondary);
+  - text uses the vanilla font;
+  - the HUD is hidden under the screen;
+  - status meters appear under the vitals on the HUD.
 
 ---
 
@@ -1223,7 +1255,7 @@ Void shards fall in the outer rings. They contain Heirshell fragments but spawn 
 - Dropped by enemies (scaled by tier and elite status), found in chests, and earned from quests and selling.
 - Spent at NPC shops, on reinforcement, reforging, and Flask Kindling.
 - Lost on death unless recovered (§8.5).
-- **Not** used for leveling.
+- ~~**Not** used for leveling.~~ *Revision 1.5:* Glim also buys attribute points at Waylights (§8.6), at the owner's request.
 
 ### 23.2 Loot philosophy
 - **Hand-placed key loot:** every Ember Heart, Breath Stone, Flask Wick, and unique accessory is placed in a specific structure or boss table. No RNG for progression-critical items.
@@ -1365,8 +1397,8 @@ Each milestone ends with: code written → imports and APIs verified → `./grad
 | 2 | **Project setup** ✅ | Compiling NeoForge 1.21.1 mod, single-JAR release with bundled libraries, run configs, module system with enforced dependency rules, GameTest and unit-test harnesses, verification scripts (dev and production server), config with in-game screen, datagen, cross-dimension border scaling |
 | 3 | **Combat foundation** ✅ | (Moved ahead of core RPG systems at the owner's request: combat is priority #2.) Health ×5 and stamina; light combos, chargeable heavies, running and rolling attacks; dodge roll and backstep with i-frames and perfect dodges; hitboxes, hitstop, poise, flinch and stagger; lock-on; enemy telegraphs (glints, decals, cues); readable enemy AI with attack tokens; 3 weapon classes (Blade, Pike, Maul) with animations generated from the same timings as hitboxes; Hollowed and Hollowed Brute; combat HUD; scripted real-client test driver |
 | 4 | **Combat depth + core RPG systems** ✅ | Guard, parry and riposte; weapon arts and Resonance; remaining weapon classes (Fang, Censer, Greatblade, Longbow, Bell, shields); sprint stamina in combat; Tolling Ram (GeckoLib quadruped) and enemy variety; Glim purse and Ember-Ghost; Wick Flask; Waylights (rest, respawn, travel) |
-| 5 | **Equipment system** | Equipment UI, slots and unlocks, item stat components, burden, reinforcement/reforge (temporary station until Old Rivet exists), first accessories |
-| 6 | **World generation** | The Pale (border control and expansion), rings and mob scaling, Waylight placement, Hearthstead, Belfry Paddock + **Bellwether boss** (first full boss as the template), Chandlery + **Mother Tallow** |
+| 5 | **Equipment system** ✅ | Equipment screen (Readiness Cross, paper-doll, armor, accessories, stats, comparison tooltips) and HUD cross; slots, unlock chains, family and duplicate rules; data-driven armor, set bonuses and 18 accessories with real effects; 3 GeckoLib armor sets (first and third person); attributes and Glim Attunement; eight damage types with identities and four statuses; burden rolls; player poise; combat stance swap; Kindling. *Reinforcement and reforging moved to M6 (revision 1.5)* |
+| 6 | **World generation** | The Pale (border control and expansion), rings and mob scaling, Waylight placement, Hearthstead, Belfry Paddock + **Bellwether boss** (first full boss as the template), Chandlery + **Mother Tallow**; reinforcement and reforging (Founder's Anvil, Temper Shards) |
 | 7 | **Hush biome & Warden** | Hush biome, noise system, Hand Lantern (light radius, Hushed reduction), Hush mobs, Echo Hollows, spread, Listening Post, Containment Lab, Unsung Nave, **Warden of the Unsung**, the Resounding |
 | 8 | **Nether content** | Tithelands enemies, Counting House, Cinder Kilns, Lava Tubes, **Tithe-Engine** |
 | 9 | **End content & egg boss** | Eye-of-Ender gate, End temples, Null Archive, **Severed Archivist**, Hatchery, Hatching Rite, **Vael** |

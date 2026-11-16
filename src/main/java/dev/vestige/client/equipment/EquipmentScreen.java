@@ -227,7 +227,7 @@ public class EquipmentScreen extends AbstractContainerScreen<EquipmentMenu> {
 
     private void burden(GuiGraphics g, StatSheet s, int x, int y) {
         float ratio = s.equipCapacity <= 0 ? 0 : s.equipLoad / s.equipCapacity;
-        int w = 64;
+        int w = 60;
         int color = switch (s.burden) {
             case LIGHT -> 0xFF7FBF6A;
             case MEDIUM -> 0xFFE8B84A;
@@ -235,7 +235,7 @@ public class EquipmentScreen extends AbstractContainerScreen<EquipmentMenu> {
             case OVERBURDENED -> 0xFFD86A5A;
         };
         label(g, "Burden", x, y, PARCH_DIM);
-        int bx = x + 36;
+        int bx = x + 40;
         g.fill(bx - 1, y + 1, bx + w + 1, y + 8, SHADOW);
         g.fill(bx, y + 2, bx + w, y + 7, 0xFF26232A);
         g.fill(bx, y + 2, bx + Math.min(w, Math.round(w * ratio)), y + 7, color);
