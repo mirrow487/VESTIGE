@@ -21,6 +21,8 @@ public final class VestigeModules {
             new WeaponModule(),
             new CombatModule(),
             new EntityModule(),
+            new dev.vestige.player.PlayerModule(),
+            new dev.vestige.waylight.WaylightModule(),
             new CatalogModule(),
             new DataGenModule(),
             new DevModule());

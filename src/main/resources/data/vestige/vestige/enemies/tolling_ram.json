@@ -4,6 +4,7 @@
   "defense": 15,
   "poise": 35,
   "poise_regen_delay": 70,
+  "glim": 64,
   "engage": {
     "min": 2.0,
     "max": 7.0,

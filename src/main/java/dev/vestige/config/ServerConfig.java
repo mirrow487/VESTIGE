@@ -24,6 +24,15 @@ public final class ServerConfig {
     public static final ModConfigSpec.DoubleValue STAMINA_REGEN_PER_SECOND;
     public static final ModConfigSpec.IntValue STAMINA_REGEN_DELAY_TICKS;
     public static final ModConfigSpec.IntValue IFRAME_LATENCY_TOLERANCE;
+    public static final ModConfigSpec.EnumValue<RunMode> RUN_MODE;
+
+    /** GDD §8.5: what death costs besides carried Glim. (Ashen, the one-life mode, is chosen at world creation in a later milestone.) */
+    public enum RunMode {
+        /** Keep the inventory; only Glim is left behind as an Ember-Ghost. */
+        WAYFARER,
+        /** Vanilla-like: the non-equipped inventory drops. */
+        PILGRIM
+    }
 
     public static final ModConfigSpec SPEC;
 
@@ -93,6 +102,16 @@ public final class ServerConfig {
                 .translation(entry(entries, "combat.iframeLatencyTolerance", "Dodge Latency Tolerance",
                         "Ticks a dodge's invincibility is backdated to compensate for latency."))
                 .defineInRange("iframeLatencyTolerance", 2, 0, 6);
+        b.pop();
+
+        b.comment("Death and the Glim purse (GDD §8.5).").push("death");
+        entries.add(new Entry(key("death"), "Death", "What dying costs."));
+        RUN_MODE = b
+                .comment("WAYFARER: keep the inventory; only carried Glim is left behind as an Ember-Ghost.",
+                        "PILGRIM: vanilla-like; the inventory drops too.")
+                .translation(entry(entries, "death.runMode", "Run Mode",
+                        "Wayfarer keeps the inventory (only Glim is left behind). Pilgrim drops it, vanilla-like."))
+                .defineEnum("runMode", RunMode.WAYFARER);
         b.pop();
 
         SPEC = b.build();

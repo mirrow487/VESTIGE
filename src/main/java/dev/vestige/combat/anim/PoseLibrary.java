@@ -755,4 +755,36 @@ public final class PoseLibrary {
                 k(RECOVERY, 0.8f, Ease.INOUTSINE).set(BODY_PITCH, 16).set(BODY_Y, -4).set(RIGHT_ARM_PITCH, 28).set(LEFT_ARM_PITCH, 28)
                         .set(RIGHT_ARM_BEND, 88).set(LEFT_ARM_BEND, 88).set(TORSO_PITCH, 34).set(HEAD_PITCH, 24));
     }
+
+    // ================================================================ M4 stage 3: Wick Flask and Waylight rest
+    static {
+        // Drink: bring the flask (left hand) up to the lips, tip the head back while the heal flows, lower it.
+        def("flask_drink",
+                k(WINDUP, 1f, Ease.OUTQUAD).set(LEFT_ARM_PITCH, -110).set(LEFT_ARM_YAW, 38).set(LEFT_ARM_BEND, 60)
+                        .set(HEAD_PITCH, -10).set(RIGHT_ARM_PITCH, -15).set(TORSO_PITCH, -4),
+                k(ACTIVE, 0.25f, Ease.INOUTSINE).set(LEFT_ARM_PITCH, -135).set(LEFT_ARM_YAW, 30).set(LEFT_ARM_BEND, 75)
+                        .set(HEAD_PITCH, -32).set(TORSO_PITCH, -8).set(RIGHT_ARM_PITCH, -12),
+                k(ACTIVE, 0.85f, Ease.INOUTSINE).set(LEFT_ARM_PITCH, -140).set(LEFT_ARM_YAW, 28).set(LEFT_ARM_BEND, 78)
+                        .set(HEAD_PITCH, -36).set(TORSO_PITCH, -10).set(RIGHT_ARM_PITCH, -12),
+                k(RECOVERY, 0.5f, Ease.OUTQUAD).set(LEFT_ARM_PITCH, -40).set(LEFT_ARM_YAW, 15).set(LEFT_ARM_BEND, 20)
+                        .set(HEAD_PITCH, 6).set(TORSO_PITCH, 4));
+        // Empty: a hopeful tilt, then a shake by the ear.
+        def("flask_shake",
+                k(RECOVERY, 0.2f, Ease.OUTQUAD).set(LEFT_ARM_PITCH, -120).set(LEFT_ARM_YAW, 50).set(LEFT_ARM_BEND, 50)
+                        .set(HEAD_PITCH, -20).set(HEAD_YAW, -15),
+                k(RECOVERY, 0.4f, Ease.INOUTSINE).set(LEFT_ARM_PITCH, -115).set(LEFT_ARM_YAW, 60).set(LEFT_ARM_ROLL, -20)
+                        .set(LEFT_ARM_BEND, 55).set(HEAD_PITCH, -5).set(HEAD_YAW, -25).set(HEAD_ROLL, -10),
+                k(RECOVERY, 0.55f, Ease.INOUTSINE).set(LEFT_ARM_PITCH, -115).set(LEFT_ARM_YAW, 40).set(LEFT_ARM_ROLL, 15)
+                        .set(LEFT_ARM_BEND, 55).set(HEAD_PITCH, -5).set(HEAD_YAW, -25).set(HEAD_ROLL, -10),
+                k(RECOVERY, 0.7f, Ease.INOUTSINE).set(LEFT_ARM_PITCH, -115).set(LEFT_ARM_YAW, 60).set(LEFT_ARM_ROLL, -20)
+                        .set(LEFT_ARM_BEND, 55).set(HEAD_PITCH, 5).set(HEAD_YAW, -10));
+        // Rest: drop to one knee before the lantern, head bowed, hands on the knee.
+        def("rest_kneel",
+                k(ACTIVE, 0f, Ease.OUTQUAD).set(RIGHT_LEG_PITCH, -88).set(RIGHT_LEG_BEND, 95).set(LEFT_LEG_PITCH, 10)
+                        .set(LEFT_LEG_BEND, 100).set(BODY_Y, -5.5f).set(TORSO_PITCH, 18).set(HEAD_PITCH, 25)
+                        .set(RIGHT_ARM_PITCH, -40).set(RIGHT_ARM_BEND, 30).set(LEFT_ARM_PITCH, -25).set(LEFT_ARM_YAW, 20),
+                k(RECOVERY, 0.75f, Ease.LINEAR).set(RIGHT_LEG_PITCH, -88).set(RIGHT_LEG_BEND, 95).set(LEFT_LEG_PITCH, 10)
+                        .set(LEFT_LEG_BEND, 100).set(BODY_Y, -5.5f).set(TORSO_PITCH, 14).set(HEAD_PITCH, 20)
+                        .set(RIGHT_ARM_PITCH, -40).set(RIGHT_ARM_BEND, 30).set(LEFT_ARM_PITCH, -25).set(LEFT_ARM_YAW, 20));
+    }
 }

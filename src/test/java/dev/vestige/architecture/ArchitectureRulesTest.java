@@ -33,14 +33,16 @@ class ArchitectureRulesTest {
             Map.entry("core", Set.of()),
             Map.entry("config", Set.of()),
             Map.entry("pale", Set.of("config")),
-            Map.entry("datagen", Set.of("config", "weapon", "entity", "catalog")),
+            Map.entry("datagen", Set.of("config", "weapon", "entity", "catalog", "player", "waylight")),
             Map.entry("dev", Set.of()),
             // Gameplay systems (GDD §0: combat first).
             Map.entry("vitals", Set.of("config")),
             Map.entry("weapon", Set.of()),
             Map.entry("combat", Set.of("config", "vitals", "weapon")),
             Map.entry("entity", Set.of("config", "vitals", "combat")),
-            Map.entry("catalog", Set.of("weapon", "entity")),
+            Map.entry("catalog", Set.of("weapon", "entity", "player", "waylight")),
+            Map.entry("player", Set.of("config", "vitals", "combat", "entity")),
+            Map.entry("waylight", Set.of("config", "vitals", "combat", "player")),
             // Test and client layers sit on top of everything common.
             Map.entry("gametest", Set.of("*")),
             Map.entry("client", Set.of("*")));

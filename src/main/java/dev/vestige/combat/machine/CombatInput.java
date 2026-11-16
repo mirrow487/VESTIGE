@@ -2,7 +2,7 @@ package dev.vestige.combat.machine;
 
 /** Player combat inputs (GDD §7.2). */
 public enum CombatInput {
-    LIGHT, HEAVY_PRESS, HEAVY_RELEASE, ROLL, GUARD_PRESS, GUARD_RELEASE, ART;
+    LIGHT, HEAVY_PRESS, HEAVY_RELEASE, ROLL, GUARD_PRESS, GUARD_RELEASE, ART, FLASK;
 
     private static final CombatInput[] VALUES = values();
 

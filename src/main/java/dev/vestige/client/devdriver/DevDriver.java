@@ -61,6 +61,8 @@ public final class DevDriver {
             buildAnimScenario();
         } else if (scenario.equals("depth")) {
             buildDepthScenario();
+        } else if (scenario.equals("rpg")) {
+            buildRpgScenario();
         } else if (scenario.equals("arsenal")) {
             buildArsenalScenario();
         } else if (scenario.equals("ram")) {
@@ -750,6 +752,174 @@ public final class DevDriver {
                 () -> "took " + (remembered[0] - mc().player.getHealth()));
         command("tick rate 20");
         command("kill @e[type=vestige:tolling_ram]");
+        run(() -> {
+            VestigeIds.LOG.info("DRIVER DONE checks={} failures={} {}", checks, FAILURES.size(), FAILURES);
+            quitSoon = 40;
+        });
+    }
+
+    private static net.minecraft.core.BlockPos waylightA;
+    private static net.minecraft.core.BlockPos waylightB;
+    private static long glimBefore;
+
+    /** Right-clicks a block as a real player would (use-item-on packet). */
+    private static void useBlock(java.util.function.Supplier<net.minecraft.core.BlockPos> pos) {
+        run(() -> {
+            var p = pos.get();
+            var hit = new net.minecraft.world.phys.BlockHitResult(net.minecraft.world.phys.Vec3.atCenterOf(p).add(0, 0.4, 0),
+                    net.minecraft.core.Direction.UP, p, false);
+            mc().gameMode.useItemOn(mc().player, net.minecraft.world.InteractionHand.MAIN_HAND, hit);
+        });
+        wait(4);
+    }
+
+    private static dev.vestige.player.Flask flask() {
+        return mc().player.getData(dev.vestige.player.PlayerModule.FLASK);
+    }
+
+    /**
+     * Core RPG systems in the real client: lighting Waylights (title card), the Waylight menu, travel,
+     * rest (kneel, refill), the Wick Flask (drink pose, flask in hand, HUD tile), Glim from a kill (HUD
+     * popup), death leaving an Ember-Ghost, respawning at the rested Waylight and reclaiming the Glim.
+     */
+    private static void buildRpgScenario() {
+        setup();
+        command("difficulty normal");
+        command("gamerule doImmediateRespawn true");
+        run(() -> {
+            var c = arenaCenter;
+            waylightA = net.minecraft.core.BlockPos.containing(c.x + 2, c.y, c.z + 3);
+            waylightB = net.minecraft.core.BlockPos.containing(c.x - 6, c.y, c.z + 8);
+        });
+        run(() -> {
+            var a = waylightA;
+            var b = waylightB;
+            var server = mc().getSingleplayerServer();
+            server.execute(() -> {
+                var lvl = server.overworld();
+                lvl.setBlock(a, dev.vestige.waylight.WaylightModule.WAYLIGHT.get().defaultBlockState(), 3);
+                lvl.setBlock(b, dev.vestige.waylight.WaylightModule.WAYLIGHT.get().defaultBlockState()
+                        .setValue(dev.vestige.waylight.WaylightBlock.FACING, net.minecraft.core.Direction.EAST), 3);
+            });
+        });
+        wait(10);
+        camera(CameraType.THIRD_PERSON_FRONT);
+        shot("w_00_unlit");
+        // Light B first (walk over), then A: the title card.
+        run(() -> {
+            var b = waylightB;
+            var server = mc().getSingleplayerServer();
+            String cmd = String.format(java.util.Locale.ROOT, "tp @p %d.5 %d %d.5", b.getX() + 1, b.getY(), b.getZ());
+            server.execute(() -> server.getCommands().performPrefixedCommand(server.createCommandSourceStack().withSuppressedOutput(), cmd));
+        });
+        wait(6);
+        useBlock(() -> waylightB);
+        recenter();
+        camera(CameraType.FIRST_PERSON);
+        command("execute at @p run tp @p ~ ~ ~ -35 25");
+        useBlock(() -> waylightA);
+        wait(6);
+        shot("w_01_waylight_kindled_title");
+        check("waylight lit", () -> mc().level.getBlockState(waylightA).getValue(dev.vestige.waylight.WaylightBlock.LIT), "not lit");
+        wait(60);
+        camera(CameraType.THIRD_PERSON_FRONT);
+        shot("w_02_lit_waylight");
+        // Menu, travel list.
+        camera(CameraType.FIRST_PERSON);
+        useBlock(() -> waylightA);
+        waitUntil("waylight menu opens", 40, () -> dev.vestige.client.rpg.WaylightScreen.current != null);
+        shot("w_03_menu");
+        run(() -> dev.vestige.client.rpg.WaylightScreen.current.showTravel());
+        wait(4);
+        shot("w_04_travel_list");
+        check("travel lists the other waylight", () -> dev.vestige.client.rpg.WaylightScreen.current != null
+                && dev.vestige.client.rpg.WaylightScreen.current.data().destinations().size() == 1, "no destination");
+        run(() -> dev.vestige.client.rpg.WaylightScreen.current.travelTo(0));
+        waitUntil("arrived at the other waylight", 60, () -> mc().player.blockPosition().distSqr(waylightB) <= 3);
+        check("travelled to the other waylight", () -> mc().player.blockPosition().distSqr(waylightB) <= 3,
+                () -> "at " + mc().player.blockPosition() + ", B " + waylightB);
+        // Rest at B: kneel, refill.
+        onServerPlayer(sp -> dev.vestige.player.FlaskService.set(sp, 0, 3, 0));
+        useBlock(() -> waylightB);
+        waitUntil("waylight menu opens again", 40, () -> dev.vestige.client.rpg.WaylightScreen.current != null);
+        run(() -> {
+            var s = dev.vestige.client.rpg.WaylightScreen.current;
+            net.neoforged.neoforge.network.PacketDistributor.sendToServer(new dev.vestige.waylight.WaylightPayloads.Act(s.data().pos(), false,
+                    net.minecraft.core.GlobalPos.of(mc().level.dimension(), s.data().pos())));
+            s.onClose();
+        });
+        camera(CameraType.THIRD_PERSON_FRONT);
+        waitUntil("resting", 40, () -> mine() != null && mine().ref.action().equals("rest"));
+        wait(6);
+        shot("w_05_rest_kneel");
+        sideCamera(0.4, 3.4, 180f);
+        shot("w_06_rest_kneel_side");
+        playerCamera();
+        waitUntil("flask refilled", 40, () -> flask().charges() == 3);
+        check("rest refilled the flask", () -> flask().charges() == 3, () -> "charges " + flask().charges());
+        wait(30);
+        // Wick Flask: drink at low health.
+        recenter();
+        command("tick rate 8");
+        onServerPlayer(sp -> sp.setHealth(25f));
+        wait(4);
+        run(() -> remembered[0] = mc().player.getHealth());
+        press(CombatInput.FLASK, Float.NaN);
+        shotAt("f_01_drink_raise_front", 7);
+        sideCamera(-3.4, 0.3, -90f);
+        shotAt("f_02_drink_side", 18);
+        playerCamera();
+        camera(CameraType.FIRST_PERSON);
+        waitUntil("drink over", 60, () -> mine() == null);
+        shot("f_03_after_drink_hud");
+        check("flask healed", () -> mc().player.getHealth() > remembered[0] + 30f, () -> remembered[0] + " -> " + mc().player.getHealth());
+        check("flask used a charge", () -> flask().charges() == 2, () -> "charges " + flask().charges());
+        command("tick rate 20");
+        // Glim from a kill.
+        command("execute at @p rotated 0 0 run summon vestige:hollowed ^ ^ ^3 {NoAI:1b,Rotation:[180f,0f]}");
+        waitUntil("hollowed visible", 60, () -> nearest(EntityModule.HOLLOWED.get()) != null);
+        run(() -> glimBefore = mc().player.getData(dev.vestige.player.PlayerModule.GLIM).amount());
+        onServerPlayer(sp -> sp.level().getEntitiesOfClass(dev.vestige.entity.mob.Hollowed.class, sp.getBoundingBox().inflate(8))
+                .forEach(m -> m.hurt(sp.damageSources().playerAttack(sp), 100_000f)));
+        waitUntil("glim awarded", 40, () -> mc().player.getData(dev.vestige.player.PlayerModule.GLIM).amount() > glimBefore);
+        wait(4);
+        shot("g_01_glim_popup");
+        check("kill gave glim", () -> mc().player.getData(dev.vestige.player.PlayerModule.GLIM).amount() == glimBefore + 32,
+                () -> "glim " + mc().player.getData(dev.vestige.player.PlayerModule.GLIM).amount());
+        wait(40);
+        // Death: the Ember-Ghost; respawn at the rested Waylight (B); come back and reclaim.
+        onServerPlayer(sp -> dev.vestige.player.GlimService.set(sp, 500));
+        recenter();
+        run(() -> remembered[1] = (float) mc().player.getX());
+        run(() -> remembered[2] = (float) mc().player.getZ());
+        command("kill @p");
+        waitUntil("respawned", 100, () -> mc().player != null && mc().player.isAlive() && mc().screen == null && worldTicks > 0);
+        wait(20);
+        check("respawned at the rested waylight", () -> mc().player.blockPosition().distSqr(waylightB) <= 4,
+                () -> "at " + mc().player.blockPosition());
+        check("glim left behind", () -> mc().player.getData(dev.vestige.player.PlayerModule.GLIM).amount() == 0,
+                () -> "glim " + mc().player.getData(dev.vestige.player.PlayerModule.GLIM).amount());
+        run(() -> {
+            var server = mc().getSingleplayerServer();
+            String cmd = String.format(java.util.Locale.ROOT, "tp @p %.2f %.2f %.2f 0 20", remembered[1], arenaCenter.y, remembered[2] - 4.0);
+            server.execute(() -> server.getCommands().performPrefixedCommand(server.createCommandSourceStack().withSuppressedOutput(), cmd));
+        });
+        waitUntil("ember-ghost visible", 60, () -> nearest(dev.vestige.player.PlayerModule.EMBER_GHOST.get()) != null);
+        camera(CameraType.FIRST_PERSON);
+        wait(10);
+        shot("g_02_ember_ghost");
+        camera(CameraType.THIRD_PERSON_FRONT);
+        shot("g_03_ember_ghost_behind_player");
+        run(() -> {
+            var server = mc().getSingleplayerServer();
+            String cmd = String.format(java.util.Locale.ROOT, "tp @p %.2f %.2f %.2f", remembered[1], arenaCenter.y, remembered[2]);
+            server.execute(() -> server.getCommands().performPrefixedCommand(server.createCommandSourceStack().withSuppressedOutput(), cmd));
+        });
+        waitUntil("glim reclaimed", 60, () -> mc().player.getData(dev.vestige.player.PlayerModule.GLIM).amount() == 500);
+        check("reclaimed the ghost's glim", () -> mc().player.getData(dev.vestige.player.PlayerModule.GLIM).amount() == 500,
+                () -> "glim " + mc().player.getData(dev.vestige.player.PlayerModule.GLIM).amount());
+        camera(CameraType.FIRST_PERSON);
+        shot("g_04_reclaimed");
         run(() -> {
             VestigeIds.LOG.info("DRIVER DONE checks={} failures={} {}", checks, FAILURES.size(), FAILURES);
             quitSoon = 40;

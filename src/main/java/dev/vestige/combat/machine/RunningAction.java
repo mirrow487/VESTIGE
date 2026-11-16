@@ -27,7 +27,7 @@ public final class RunningAction {
     boolean holding;
     int chargeTicks;
 
-    public enum Kind { LIGHT, HEAVY, RUNNING, ROLLING, DODGE, GUARD, PARRY, ART, RIPOSTE, OTHER }
+    public enum Kind { LIGHT, HEAVY, RUNNING, ROLLING, DODGE, GUARD, PARRY, ART, RIPOSTE, FLASK, OTHER }
 
     public RunningAction(ActionRef ref, ActionDef def, int seq, float dirYaw, long startTick, Kind kind) {
         this.ref = ref;

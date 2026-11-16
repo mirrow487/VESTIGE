@@ -28,6 +28,7 @@ public final class VestigeClient {
         container.registerExtensionPoint(IConfigScreenFactory.class, ConfigurationScreen::new);
         IEventBus gameBus = NeoForge.EVENT_BUS;
         CombatClient.init(modBus, gameBus);
+        dev.vestige.client.rpg.RpgClient.init(modBus, gameBus);
         modBus.addListener(VestigeClient::renderers);
         modBus.addListener(VestigeClient::particles);
         modBus.addListener(VestigeClient::setup);

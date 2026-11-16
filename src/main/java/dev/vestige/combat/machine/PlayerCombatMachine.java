@@ -51,6 +51,11 @@ public final class PlayerCombatMachine {
         default boolean hasAmmo() {
             return true;
         }
+
+        /** True when the Wick Flask has a charge left (otherwise the drink is an empty shake). */
+        default boolean hasFlaskCharge() {
+            return false;
+        }
     }
 
     public record MoveSetHandle(ResourceLocation id, MoveSet moveSet) {
@@ -137,14 +142,15 @@ public final class PlayerCombatMachine {
         if (current.kind == RunningAction.Kind.GUARD) {
             return input != CombatInput.GUARD_PRESS;
         }
-        if (input == CombatInput.ROLL || input == CombatInput.GUARD_PRESS) {
+        if (input == CombatInput.ROLL || input == CombatInput.GUARD_PRESS || input == CombatInput.FLASK) {
             return current.kind == RunningAction.Kind.DODGE ? e >= current.def.comboOpensAt() : e >= current.def.cancelOpensAt();
         }
         return e >= current.def.comboOpensAt();
     }
 
     private Optional<Start> tryStart(CombatInput input, int seq, float dirYaw, long now, Context ctx, boolean fromBuffer) {
-        if (!windowOpen(input) || !ctx.canSpendStamina()) {
+        // The flask needs no stamina (GDD §8.4); everything else needs some left.
+        if (!windowOpen(input) || (input != CombatInput.FLASK && !ctx.canSpendStamina())) {
             return Optional.empty();
         }
         int comboBefore = comboIndex;
@@ -158,6 +164,8 @@ public final class PlayerCombatMachine {
             case ART -> ctx.weapon().flatMap(w -> w.moveSet().art().flatMap(name -> w.moveSet().action(name)
                     .filter(def -> ctx.canSpendResonance(def.art().map(ActionDef.Art::cost).orElse(0f)))
                     .flatMap(def -> w.start(name, seq, def.dodge().isPresent() ? dirYaw : Float.NaN, now, RunningAction.Kind.ART))));
+            case FLASK -> ctx.common().flatMap(c -> c.start(ctx.hasFlaskCharge() ? "flask_drink" : "flask_empty", seq, Float.NaN, now,
+                    RunningAction.Kind.FLASK));
             default -> Optional.empty();
         };
         if (start.isPresent() && !ammoOk(start.get().action().def, ctx)) {

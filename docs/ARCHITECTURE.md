@@ -123,6 +123,7 @@ Every gameplay system is a **module**: a top-level package under `dev.vestige` w
 
 **Implemented:**
 - M2: `core`, `config`, `pale` (cross-dimension border scaling), `datagen`, `dev`, `gametest`, `client`.
+- M4: `player` (Glim, Wick Flask, Ember-Ghost, Run Mode; depends on config, vitals, combat, entity) and `waylight` (block, registry, rest, travel; depends on config, vitals, combat, player). The combat module stays independent of both: the flask reaches the action machine through `PlayerCombat.setFlaskCheck`, the same hook pattern as `VitalsModule.setRegenFactor`.
 - M3: `vitals` (health scale, stamina), `weapon` (items, weapon profiles), `combat` (actions, machine, hits, damage, payloads), `entity` (enemy base class, AI, Hollowed), `catalog` (creative tab, spawn eggs). Client: `client.combat`, `client.anim`, `client.entity`, `client.hud`, `client.fx`, `client.devdriver`. Shared infrastructure in `core`: `SyncedDataTable` (datapack JSON with codecs, reloadable, synced to clients) and `Net` (sends that skip connections lacking VESTIGE channels).
 - Combat details: [systems/combat.md](systems/combat.md). The tree below is the full target layout; packages are created when their system is implemented, never as empty placeholders.
 

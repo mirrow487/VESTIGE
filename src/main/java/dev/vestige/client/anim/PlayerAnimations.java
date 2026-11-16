@@ -228,6 +228,9 @@ public final class PlayerAnimations {
                 }
                 if (c.isRotation()) {
                     value = (float) Math.toRadians(value);
+                } else if (c.part.equals("body")) {
+                    // The shared channels use model pixels (as GeckoLib bones do); playerAnimator moves the body in blocks.
+                    value = value / 16f;
                 }
                 state.addKeyFrame(tick, value, ease(f.ease()));
                 lastTick = tick;

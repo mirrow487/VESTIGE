@@ -116,6 +116,11 @@ write('vestige/vestige/movesets/player.json', moveset({
     # 4-tick parry window starting on tick 2 (GDD §7.7); a committed recovery if it whiffs.
     'parry_buckler': action(2, 4, 12, 'parry_buckler', stamina=8, parry=(2, 6), combo=0.5, cancel=0.5, hitstop=0),
     'guard_break': action(0, 0, 24, 'guard_break', hitstop=0),
+    # Wick Flask (GDD §8.4): raise, then heal over the 20 active ticks; a walk at most. Empty: a futile shake.
+    'flask_drink': action(8, 20, 8, 'flask_drink', combo=0.0, cancel=0.5, hitstop=0),
+    'flask_empty': action(0, 0, 18, 'flask_shake', combo=0.0, cancel=0.6, hitstop=0),
+    # Resting at a Waylight (GDD §6.6): kneel before the lantern.
+    'rest': action(6, 1, 28, 'rest_kneel', hitstop=0),
 }))
 
 # ---------------------------------------------------------------- blade (GDD §7.4: 5/3/7, 12 stamina; heavy 10/3/12, 22)
@@ -292,7 +297,7 @@ write('vestige/vestige/movesets/tolling_ram.json', moveset({
 }))
 
 write('vestige/vestige/enemies/hollowed.json', {
-    'moveset': 'vestige:hollowed', 'health': 90, 'defense': 10, 'poise': 20, 'poise_regen_delay': 60,
+    'moveset': 'vestige:hollowed', 'health': 90, 'defense': 10, 'poise': 20, 'poise_regen_delay': 60, 'glim': 32,
     'engage': {'min': 1.3, 'max': 2.4, 'strafe_speed': 0.45, 'pause_min': 12, 'pause_max': 32},
     'attacks': [
         {'action': 'swipe', 'weight': 4, 'max_range': 2.6, 'cooldown': 30, 'follow_up': 'backhand', 'follow_chance': 0.45},
@@ -300,7 +305,7 @@ write('vestige/vestige/enemies/hollowed.json', {
     ],
 })
 write('vestige/vestige/enemies/hollowed_brute.json', {
-    'moveset': 'vestige:hollowed_brute', 'health': 220, 'defense': 25, 'poise': 60, 'poise_regen_delay': 80,
+    'moveset': 'vestige:hollowed_brute', 'health': 220, 'defense': 25, 'poise': 60, 'poise_regen_delay': 80, 'glim': 110,
     'engage': {'min': 1.8, 'max': 2.8, 'strafe_speed': 0.35, 'pause_min': 20, 'pause_max': 40},
     'attacks': [
         {'action': 'overhead_slam', 'weight': 3, 'max_range': 3.2, 'cooldown': 60},
@@ -309,7 +314,7 @@ write('vestige/vestige/enemies/hollowed_brute.json', {
 })
 
 write('vestige/vestige/enemies/tolling_ram.json', {
-    'moveset': 'vestige:tolling_ram', 'health': 140, 'defense': 15, 'poise': 35, 'poise_regen_delay': 70,
+    'moveset': 'vestige:tolling_ram', 'health': 140, 'defense': 15, 'poise': 35, 'poise_regen_delay': 70, 'glim': 64,
     'engage': {'min': 2.0, 'max': 7.0, 'strafe_speed': 0.4, 'pause_min': 18, 'pause_max': 40},
     'attacks': [
         {'action': 'butt_charge', 'weight': 4, 'min_range': 3.5, 'max_range': 9.0, 'cooldown': 90},

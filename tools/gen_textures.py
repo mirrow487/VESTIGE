@@ -275,6 +275,42 @@ def timber_bulwark():
     save(img, 'item/timber_bulwark.png')
 
 
+def wick_flask_sprite():
+    img = Image.new('RGBA', (16, 16), (0, 0, 0, 0))
+    glass_c = (170, 200, 210, 255)
+    for y in range(6, 15):
+        for x in range(3, 13):
+            if abs(x - 7.5) + max(0, abs(y - 10.5) - 2) <= 5:
+                c = EMBER if y > 8 else glass_c
+                if y > 8 and (x + y) % 4 == 0:
+                    c = (255, 200, 110, 255)
+                px(img, x, y, c)
+    for y in range(3, 6):
+        px(img, 7, y, glass_c)
+        px(img, 8, y, glass_c)
+    for x in range(6, 10):
+        px(img, x, 2, WAX)
+    px(img, 7, 1, WICK)
+    px(img, 8, 0, EMBER)
+    px(img, 5, 9, (230, 245, 250, 255))
+    outline(img)
+    save(img, 'item/wick_flask.png')
+
+
+def flask_wick_sprite():
+    img = Image.new('RGBA', (16, 16), (0, 0, 0, 0))
+    for i in range(2, 13):
+        px(img, i, 15 - i, WICK if i % 3 else (80, 60, 44, 255))
+        px(img, i + 1, 15 - i, WICK)
+    for x, y in ((13, 1), (14, 1), (13, 2), (14, 0)):
+        px(img, x, y, EMBER)
+    px(img, 14, 1, (255, 220, 140, 255))
+    for x, y in ((3, 13), (4, 13), (3, 12)):
+        px(img, x, y, WAX)
+    outline(img)
+    save(img, 'item/flask_wick.png')
+
+
 def humanoid_skin(path, skin, skin_dark, cloth, cloth_dark, accent, eye_glow, seed):
     """64x32 humanoid layout (HumanoidModel.createMesh, mirrored left limbs)."""
     rnd = random.Random(seed)
@@ -395,6 +431,8 @@ hunting_bow()
 handbell()
 iron_kite_shield()
 timber_bulwark()
+wick_flask_sprite()
+flask_wick_sprite()
 # Hollowed and Brute skins are painted by tools/gen_models.py (GeckoLib models).
 star('particle/glint_white.png', (235, 240, 255))
 star('particle/glint_red.png', (230, 40, 30))

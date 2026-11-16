@@ -27,6 +27,9 @@ public final class CombatKeys {
     public static final KeyMapping DODGE = new KeyMapping("key.vestige.dodge", COMBAT, InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_LEFT_ALT, CATEGORY);
     public static final KeyMapping ART = new KeyMapping("key.vestige.art", COMBAT, InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_F, CATEGORY);
     public static final KeyMapping LOCK_ON = new KeyMapping("key.vestige.lock_on", COMBAT, InputConstants.Type.MOUSE, GLFW.GLFW_MOUSE_BUTTON_MIDDLE, CATEGORY);
+    /** Wick Flask (GDD §7.2): works armed or not. */
+    public static final KeyMapping FLASK = new KeyMapping("key.vestige.flask", net.neoforged.neoforge.client.settings.KeyConflictContext.IN_GAME,
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_H, CATEGORY);
 
     private CombatKeys() {}
 
@@ -35,5 +38,6 @@ public final class CombatKeys {
         event.register(DODGE);
         event.register(LOCK_ON);
         event.register(ART);
+        event.register(FLASK);
     }
 }

@@ -93,6 +93,11 @@ public final class ClientCombat {
             public boolean hasAmmo() {
                 return dev.vestige.combat.projectile.Ammo.has(player);
             }
+
+            @Override
+            public boolean hasFlaskCharge() {
+                return PlayerCombat.hasFlaskCharge(player);
+            }
         };
     }
 
@@ -141,6 +146,10 @@ public final class ClientCombat {
     static void onClientTickPre(ClientTickEvent.Pre event) {
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer player = mc.player;
+        // The Wick Flask works whether or not a weapon is held.
+        while (player != null && mc.screen == null && CombatKeys.FLASK.consumeClick()) {
+            press(CombatInput.FLASK, Float.NaN);
+        }
         if (player == null || mc.screen != null || !armed()) {
             if (guardWasDown && player != null) {
                 press(CombatInput.GUARD_RELEASE, Float.NaN);
@@ -251,9 +260,9 @@ public final class ClientCombat {
             }
             return;
         }
-        if (current != null && current.kind == RunningAction.Kind.GUARD) {
-            // Guarding: a slow, deliberate walk (GDD §7.7); a tower shield is slower still.
-            float speed = current.ref.action().equals("guard_bulwark") ? 0.22f : 0.35f;
+        if (current != null && (current.kind == RunningAction.Kind.GUARD || current.kind == RunningAction.Kind.FLASK)) {
+            // Guarding or drinking: a slow, deliberate walk (GDD §7.7, §8.4); a tower shield is slower still.
+            float speed = current.ref.action().equals("guard_bulwark") ? 0.22f : current.kind == RunningAction.Kind.FLASK ? 0.4f : 0.35f;
             event.getInput().forwardImpulse *= speed;
             event.getInput().leftImpulse *= speed;
             event.getInput().jumping = false;

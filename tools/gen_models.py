@@ -484,6 +484,72 @@ def ram_animations():
     }}
 
 
+# ----------------------------------------------------------------------------- the Ember-Ghost
+def ember(alpha=200):
+    """Charred cloth glowing ember-orange at the seams; partly see-through (translucent render)."""
+    def paint(face, x, y, w, h, rnd):
+        seam = (x + 2 * y) % 5 == 0 or (y == h - 1)
+        if seam:
+            c = (255, 160 + rnd.randint(0, 50), 60, alpha)
+        elif rnd.random() < 0.1:
+            c = (255, 210, 120, alpha)
+        else:
+            v = rnd.randint(-8, 8)
+            c = (92 + v, 40 + v, 24 + v, alpha)
+        return c
+    return paint
+
+
+def flame_tail(face, x, y, w, h, rnd):
+    t = y / max(1, h - 1)
+    if rnd.random() < t * 0.55:
+        return None                                 # frays into nothing
+    return (255, int(200 - 90 * t), int(90 - 60 * t), int(220 - 120 * t))
+
+
+def ghost_hood(face, x, y, w, h, rnd):
+    if face == 'north' and 1 <= x <= w - 2 and 1 <= y <= h - 2:
+        if y == 3 and x in (2, w - 3):
+            return (255, 236, 170, 255)              # two bright eyes in the dark
+        return (18, 10, 8, 235)
+    return ember(215)(face, x, y, w, h, rnd)
+
+
+def ember_ghost():
+    m = Model('ember_ghost', 64, 64)
+    m.bone('root', None, (0, 0, 0))
+    m.bone('body', 'root', (0, 14, 0))
+    m.cube('body', (-3.5, 12, -2.5), (7, 9, 5), ember(205))
+    m.cube('body', (-3, 9, -2), (6, 3, 4), ember(185))
+    m.bone('tail', 'body', (0, 9, 0))
+    m.cube('tail', (-2.5, 4, -1.5), (5, 5, 3), flame_tail)
+    m.cube('tail', (-1.5, 0, -1), (3, 4, 2), flame_tail)
+    m.bone('head', 'body', (0, 21, 0))
+    m.cube('head', (-3.5, 21, -3.5), (7, 7, 7), ghost_hood)
+    m.cube('head', (-1.5, 22, 3.5), (3, 4, 2), ember(190))   # hood tail
+    for side, sx in (('right', -1), ('left', 1)):
+        x0 = -6 if sx < 0 else 3.5
+        m.bone(side + '_arm', 'body', (4.5 * sx, 20, 0))
+        m.cube(side + '_arm', (x0, 13, -1), (2.5, 7, 2), ember(170), mirror=sx > 0)
+        m.cube(side + '_arm', (x0 + 0.25, 10, -0.75), (2, 3, 1.5), flame_tail, mirror=sx > 0)
+    return m
+
+
+def ember_ghost_animations():
+    n = 2.4
+    return {'format_version': '1.8.0', 'animations': {
+        'animation.ember_ghost.idle': {'loop': True, 'animation_length': n, 'bones': {
+            'root': {'position': channel(kf(0, [0, 2, 0]), kf(n / 2, [0, 4, 0]), kf(n, [0, 2, 0]))},
+            'body': {'rotation': channel(kf(0, [4, 0, 2]), kf(n / 2, [8, 0, -2]), kf(n, [4, 0, 2]))},
+            'head': {'rotation': channel(kf(0, [12, -6, 0]), kf(n / 2, [16, 6, 0]), kf(n, [12, -6, 0]))},
+            'tail': {'rotation': channel(kf(0, [8, 0, 6]), kf(n / 4, [14, 0, -6]), kf(n / 2, [8, 0, 6]),
+                                         kf(n * 0.75, [14, 0, -6]), kf(n, [8, 0, 6]))},
+            'right_arm': {'rotation': channel(kf(0, [-20, 0, 10]), kf(n / 2, [-28, 0, 16]), kf(n, [-20, 0, 10]))},
+            'left_arm': {'rotation': channel(kf(0, [-24, 0, -12]), kf(n / 2, [-16, 0, -18]), kf(n, [-24, 0, -12]))},
+        }},
+    }}
+
+
 def write_json(rel, obj):
     path = os.path.join(ROOT, rel)
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -503,6 +569,10 @@ def main():
     write_json('geo/entity/tolling_ram.geo.json', ram.geo())
     ram.texture(17).save(os.path.join(ROOT, 'textures', 'entity', 'tolling_ram.png'))
     write_json('animations/entity/tolling_ram.animation.json', ram_animations())
+    g = ember_ghost()
+    write_json('geo/entity/ember_ghost.geo.json', g.geo())
+    g.texture(23).save(os.path.join(ROOT, 'textures', 'entity', 'ember_ghost.png'))
+    write_json('animations/entity/ember_ghost.animation.json', ember_ghost_animations())
     print('ok')
 
 

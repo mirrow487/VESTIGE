@@ -12,7 +12,7 @@ import net.minecraft.resources.ResourceLocation;
  * expressed here: ranges, cooldowns and the pause between attacks.
  */
 public record EnemyProfile(ResourceLocation moveset, float health, float defense, float poise, int poiseRegenDelay,
-                           Engage engage, List<Attack> attacks) {
+                           Engage engage, List<Attack> attacks, int glim) {
 
     /** Preferred spacing and the pause between attacks. */
     public record Engage(float min, float max, float strafeSpeed, int pauseMin, int pauseMax) {
@@ -46,6 +46,7 @@ public record EnemyProfile(ResourceLocation moveset, float health, float defense
             Codec.floatRange(1f, 10_000f).optionalFieldOf("poise", 20f).forGetter(EnemyProfile::poise),
             Codec.intRange(0, 2000).optionalFieldOf("poise_regen_delay", 60).forGetter(EnemyProfile::poiseRegenDelay),
             Engage.CODEC.fieldOf("engage").forGetter(EnemyProfile::engage),
-            Attack.CODEC.listOf().fieldOf("attacks").forGetter(EnemyProfile::attacks)
+            Attack.CODEC.listOf().fieldOf("attacks").forGetter(EnemyProfile::attacks),
+            Codec.intRange(0, 1_000_000).optionalFieldOf("glim", 0).forGetter(EnemyProfile::glim)
     ).apply(i, EnemyProfile::new));
 }

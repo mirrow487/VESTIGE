@@ -191,6 +191,57 @@
         "damage": 0
       },
       "pose": "guard_break"
+    },
+    "flask_drink": {
+      "timing": {
+        "windup": 8,
+        "active": 20,
+        "recovery": 8,
+        "combo_window": 0.0,
+        "cancel_window": 0.5,
+        "hitstop": 0
+      },
+      "power": {
+        "stamina": 0,
+        "motion_value": 1.0,
+        "poise_damage": 0,
+        "damage": 0
+      },
+      "pose": "flask_drink"
+    },
+    "flask_empty": {
+      "timing": {
+        "windup": 0,
+        "active": 0,
+        "recovery": 18,
+        "combo_window": 0.0,
+        "cancel_window": 0.6,
+        "hitstop": 0
+      },
+      "power": {
+        "stamina": 0,
+        "motion_value": 1.0,
+        "poise_damage": 0,
+        "damage": 0
+      },
+      "pose": "flask_shake"
+    },
+    "rest": {
+      "timing": {
+        "windup": 6,
+        "active": 1,
+        "recovery": 28,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 0
+      },
+      "power": {
+        "stamina": 0,
+        "motion_value": 1.0,
+        "poise_damage": 0,
+        "damage": 0
+      },
+      "pose": "rest_kneel"
     }
   }
 }

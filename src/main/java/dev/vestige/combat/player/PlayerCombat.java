@@ -43,6 +43,30 @@ public final class PlayerCombat {
     public static final int IN_COMBAT_TICKS = 100;
     /** Default stun when hit out of hyperarmor. */
     public static final int DEFAULT_HIT_STUN = 8;
+    /** Set by the player module: whether a player's Wick Flask has a charge (combat does not own the flask). */
+    private static volatile java.util.function.Predicate<Player> flaskCheck = p -> false;
+
+    public static void setFlaskCheck(java.util.function.Predicate<Player> check) {
+        flaskCheck = check;
+    }
+
+    public static boolean hasFlaskCharge(Player player) {
+        return flaskCheck.test(player);
+    }
+
+    /** Plays a server-originated action from the shared player moveset (resting at a Waylight). */
+    public static boolean playCommon(ServerPlayer player, String name) {
+        PlayerCombatState st = state(player);
+        long now = player.level().getGameTime();
+        var started = CombatData.handle(false, CombatData.PLAYER_MOVESET).flatMap(h -> h.moveSet().action(name).map(def ->
+                new RunningAction(new ActionRef(h.id(), name), def, -1, Float.NaN, now, RunningAction.Kind.OTHER)));
+        started.ifPresent(a -> {
+            st.machine.interrupt(now, 0);
+            adoptServerAction(player, a);
+        });
+        return started.isPresent();
+    }
+
     /** GDD §8.2: sprinting costs 6 stamina per second in combat stance. */
     public static final float SPRINT_STAMINA_PER_TICK = 6f / 20f;
 
@@ -106,6 +130,11 @@ public final class PlayerCombat {
             public boolean hasAmmo() {
                 return Ammo.has(player);
             }
+
+            @Override
+            public boolean hasFlaskCharge() {
+                return flaskCheck.test(player);
+            }
         };
     }
 
@@ -144,7 +173,7 @@ public final class PlayerCombat {
     private static void begin(ServerPlayer player, PlayerCombatState st, RunningAction action) {
         StaminaService.spend(player, action.def.power().stamina());
         st.actionItem = player.getMainHandItem().getItem();
-        if (action.kind != RunningAction.Kind.DODGE && action.kind != RunningAction.Kind.GUARD) {
+        if (action.kind != RunningAction.Kind.DODGE && action.kind != RunningAction.Kind.GUARD && action.kind != RunningAction.Kind.FLASK) {
             st.lastCombatTick = player.level().getGameTime();
         }
         action.def.art().ifPresent(art -> {
@@ -173,7 +202,7 @@ public final class PlayerCombat {
         RunningAction current = st.machine.current();
         // Swapping items mid-action cancels it (except dodges and hit reactions, which do not use the weapon).
         if (current != null && current.kind != RunningAction.Kind.DODGE && current.kind != RunningAction.Kind.OTHER
-                && player.getMainHandItem().getItem() != st.actionItem) {
+                && current.kind != RunningAction.Kind.FLASK && player.getMainHandItem().getItem() != st.actionItem) {
             st.machine.interrupt(now, 0);
             Net.sendAround(player, new CombatPayloads.ActionEnd(
                     player.getId(), CombatPayloads.EndReason.CANCELLED.ordinal(), current.seq), true);

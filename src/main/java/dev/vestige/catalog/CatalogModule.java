@@ -46,6 +46,9 @@ public final class CatalogModule implements VestigeModule {
                 out.accept(HOLLOWED_SPAWN_EGG.get());
                 out.accept(HOLLOWED_BRUTE_SPAWN_EGG.get());
                 out.accept(TOLLING_RAM_SPAWN_EGG.get());
+                out.accept(dev.vestige.player.PlayerModule.WICK_FLASK.get());
+                out.accept(dev.vestige.player.PlayerModule.FLASK_WICK.get());
+                out.accept(dev.vestige.waylight.WaylightModule.WAYLIGHT_ITEM.get());
             })
             .build());
 
