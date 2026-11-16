@@ -1,0 +1,22 @@
+{
+  "items": [
+    "vestige:wickiron_plate"
+  ],
+  "slot": "chest",
+  "set": "vestige:wickiron",
+  "weight": 12.5,
+  "stats": {
+    "poise": 14,
+    "absorption": {
+      "slash": 0.17,
+      "strike": 0.17,
+      "pierce": 0.17,
+      "cinder": 0.14,
+      "resonance": 0.07,
+      "hush": 0.05,
+      "void": 0.06,
+      "radiance": 0.05
+    }
+  },
+  "rarity": "rare"
+}

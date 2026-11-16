@@ -1,0 +1,13 @@
+{
+  "items": [
+    "vestige:hollow_ring"
+  ],
+  "kind": "ring",
+  "weight": 0.5,
+  "rarity": "rare",
+  "description": "Your roll becomes a short blink-step with a long invulnerable window.",
+  "stats": {
+    "perk": "hollow_ring"
+  },
+  "family": "roll_modifier"
+}

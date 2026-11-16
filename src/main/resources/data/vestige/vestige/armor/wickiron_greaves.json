@@ -1,0 +1,22 @@
+{
+  "items": [
+    "vestige:wickiron_greaves"
+  ],
+  "slot": "feet",
+  "set": "vestige:wickiron",
+  "weight": 5.6,
+  "stats": {
+    "poise": 6,
+    "absorption": {
+      "slash": 0.08,
+      "strike": 0.08,
+      "pierce": 0.08,
+      "cinder": 0.06,
+      "resonance": 0.03,
+      "hush": 0.02,
+      "void": 0.03,
+      "radiance": 0.03
+    }
+  },
+  "rarity": "rare"
+}

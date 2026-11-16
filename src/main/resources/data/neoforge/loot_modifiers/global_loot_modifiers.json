@@ -1,0 +1,14 @@
+{
+  "replace": false,
+  "entries": [
+    "vestige:trinkets_dungeon",
+    "vestige:trinkets_mineshaft",
+    "vestige:trinkets_ruined_portal",
+    "vestige:relics_desert",
+    "vestige:relics_jungle",
+    "vestige:relics_stronghold",
+    "vestige:armor_weaponsmith",
+    "vestige:armor_armorer",
+    "vestige:armor_outpost"
+  ]
+}

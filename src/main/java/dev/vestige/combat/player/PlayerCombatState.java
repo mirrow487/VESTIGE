@@ -1,0 +1,26 @@
+package dev.vestige.combat.player;
+
+import dev.vestige.combat.machine.PlayerCombatMachine;
+import net.minecraft.world.item.Item;
+
+/** Transient per-player combat state (not saved; actions never survive a relog). */
+public final class PlayerCombatState {
+    final PlayerCombatMachine machine = new PlayerCombatMachine();
+    /** Item the current action was started with; switching items cancels the action. */
+    Item actionItem;
+    /** Last game tick the player attacked or was attacked; used for "in combat" checks. */
+    long lastCombatTick = Long.MIN_VALUE / 2;
+    /** Until this tick the next landed hit is a critical (Quickstep, GDD §7.11). */
+    long keenUntil = Long.MIN_VALUE / 2;
+    /** Poise damage taken since the pool last reset (GDD §7.8). */
+    float poiseTaken;
+    long lastPoiseHit = Long.MIN_VALUE / 2;
+
+    public boolean keen(long now) {
+        return now <= keenUntil;
+    }
+
+    public PlayerCombatMachine machine() {
+        return machine;
+    }
+}

@@ -31,14 +31,14 @@ All versions are pinned. They were resolved from the live Maven repositories on 
 |---|---|---|---|---|
 | Minecraft | 1.21.1 | n/a | n/a | Target |
 | Java | 21 (OpenJDK 21.0.12) | n/a | n/a | Toolchain |
-| Gradle | 8.14.3 | Wrapper (pinned in M2) | n/a | Build |
+| Gradle | 8.14.3 | Wrapper (`gradlew`, committed) | n/a | Build |
 | NeoForge | **21.1.266** | `net.neoforged:neoforge` @ maven.neoforged.net | LGPL-2.1 | Mod loader |
 | ModDevGradle | **2.0.148** | `net.neoforged.moddev` plugin | LGPL-2.1 | Gradle plugin (decompile, runs, jarJar) |
 | GeckoLib | **4.9.3** | `software.bernie.geckolib:geckolib-neoforge-1.21.1` @ dl.cloudsmith.io | MIT | Entity and boss model animation |
 | playerAnimator | **2.0.4+1.21.1** | `dev.kosmx.player-anim:player-animation-lib-forge` @ maven.kosmx.dev | MIT | Player attack, roll, and flask animations |
 | ~~TerraBlender~~ | *(not used)* | (1.21.1-4.1.0.8 verified available) | LGPLv3 | Replaced by a custom biome source (ADR-004) |
 | Parchment mappings | *(not used)* | Redirects to a host blocked in the build environment | n/a | Official Mojang names are used; parameter names stay `p_xxxxx_` |
-| JUnit 5 | latest 5.x (pinned in M2) | Maven Central | EPL | Pure-logic unit tests |
+| JUnit 5 | **5.14.4** (BOM) | Maven Central | EPL | Pure-logic unit tests and architecture rules |
 
 **Distribution:** GeckoLib and playerAnimator are bundled with **Jar-in-Jar** (`jarJar` configuration of ModDevGradle, version ranges `[4.9.3,4.10)` and `[2.0.4+1.21.1,2.1)`). The release is a single `vestige-<version>.jar`. Verified: the built jar contains `META-INF/jarjar/geckolib-neoforge-1.21.1-4.9.3.jar`, `player-animation-lib-forge-2.0.4+1.21.1.jar`, and `metadata.json`.
 
@@ -77,6 +77,19 @@ Method: a throwaway NeoForge project (all candidate dependencies) was compiled. 
 
 **Findings that changed the design** were written back into GDD v1.1 (§0, §6.1, §6.3, §7.2, §7.3, §9.5, §14.2, §29).
 
+### 2.1 Findings during Milestone 3
+
+| Finding | Consequence |
+|---|---|
+| playerAnimator mirrors torso/body yaw and roll relative to vanilla model parts (measured with the `calib` driver scenario) | `PlayerAnimations` negates those channels; pose data uses one convention (`combat.anim.Channel`) |
+| A `SpeedModifier` passed to a `ModifierLayer` constructor before its animation is set is never linked, so the layer reads inactive and nothing plays | One speed modifier per player layer, added with `addModifierLast` |
+| Positive item pitch tips a held item's point forward | Thrust poses use positive item pitch |
+| NeoForge refuses payloads on connections without negotiated channels | `core.Net` guards sends; GameTest players use `NetworkRegistry.configureMockConnection` |
+| The GameTest world is creative, and new server players have 60 ticks of spawn protection | Test players are set to survival and run their light tick 61 times |
+| `/kill` deals `Float.MAX_VALUE`; scaling it ×5 overflowed to Infinity, giving NaN health and an unkillable entity | `HealthScaling.scaleAmount` saturates; regression GameTest |
+| Software rendering is slow, so screenshots landed several ticks late | The client driver slows the game with vanilla `/tick rate` while capturing |
+| Vanilla clamps the `max_health` attribute at 1024 (found in M4 tests) | With the ×5 scale, bosses will exceed it: boss health must be handled outside the vanilla attribute (planned with the boss framework, M6+) |
+
 ---
 
 ## 3. Architectural Principles
@@ -95,12 +108,38 @@ Method: a throwaway NeoForge project (all candidate dependencies) was compiled. 
 
 Single Gradle project, mod id **`vestige`**, base package **`dev.vestige`**.
 
+### 4.1 Module system (implemented in Milestone 2)
+
+Every gameplay system is a **module**: a top-level package under `dev.vestige` with one class implementing `core.VestigeModule` (`id()` equals the package name; `init(modBus, gameBus)`).
+
+- **Modules own their registrations.** Each module creates its own `DeferredRegister`s and listeners. *Changed from the M1 plan*, which had a central `registry/` package. Per-module ownership keeps systems separable (requirement: combat, weapons, equipment, bosses, NPCs, world generation, and UI as separate systems).
+- **`core.VestigeModules`** is the single ordered list of common modules. `core.ModuleLoader` initializes them and rejects duplicate ids.
+- **Client code** lives in `dev.vestige.client` and starts from a separate `@Mod(value = "vestige", dist = Dist.CLIENT)` entry point (`VestigeClient`). Client-side parts of a system go in `client/<system>/`.
+- **Dependency rules are enforced by a unit test** (`ArchitectureRulesTest`), which scans imports on every build:
+  1. Every module package must be declared with the modules it may depend on (`core` and root classes like `VestigeIds` are always allowed).
+  2. Common code must not import client classes (`dev.vestige.client`, `net.minecraft.client`, `com.mojang.blaze3d`, `net.neoforged.neoforge.client`).
+  3. Module ids must equal package names.
+  Adding a dependency between systems is therefore an explicit, reviewed change to that table.
+
+**Implemented:**
+- M2: `core`, `config`, `pale` (cross-dimension border scaling), `datagen`, `dev`, `gametest`, `client`.
+- M4: `player` (Glim, Wick Flask, Ember-Ghost, Run Mode; depends on config, vitals, combat, entity) and `waylight` (block, registry, rest, travel; depends on config, vitals, combat, player). The combat module stays independent of both: the flask reaches the action machine through `PlayerCombat.setFlaskCheck`, the same hook pattern as `VitalsModule.setRegenFactor`.
+- M5: `stats` (pure rules with no dependencies: `DamageType`, `DamageSpread`, `Attribute`, `AttributeRules`, `Grade`, `StatusType`, `Burden`, `Rarity`, `Perks`, `StatSheet`, and the `Stats` hook) and `equipment` (attachments, data tables, `StatCalculator`, `EquipmentStats`, `Stance`, `EquipmentRules`, `Attunement`, the menu and its payloads, armor items; depends on config, vitals, weapon, combat, player, waylight, stats). `weapon`, `vitals`, `combat`, `entity`, `player` and `waylight` now also depend on `stats`, never on `equipment`. Equipment reaches them only through hooks it installs at init:
+  - `Stats.install(EquipmentStats::of)`: the stat sheet for any player;
+  - `PlayerCombat.setLedgerHook`: the Glim cost of the Ledger of Debts;
+  - `EquipmentArmor.rendererFactory`: the client armor renderer, kept out of common code.
+
+  Client: `client.equipment` (screen, Attunement, tooltips, keys, armor rendering, relic movement). Details: [systems/equipment.md](systems/equipment.md).
+- M3: `vitals` (health scale, stamina), `weapon` (items, weapon profiles), `combat` (actions, machine, hits, damage, payloads), `entity` (enemy base class, AI, Hollowed), `catalog` (creative tab, spawn eggs). Client: `client.combat`, `client.anim`, `client.entity`, `client.hud`, `client.fx`, `client.devdriver`. Shared infrastructure in `core`: `SyncedDataTable` (datapack JSON with codecs, reloadable, synced to clients) and `Net` (sends that skip connections lacking VESTIGE channels).
+- Combat details: [systems/combat.md](systems/combat.md). The tree below is the full target layout; packages are created when their system is implemented, never as empty placeholders.
+
+**Target layout:**
+
 ```
 src/main/java/dev/vestige/
-├── Vestige.java                  // @Mod entry: wires DeferredRegisters, configs, listeners
-├── registry/                     // VItems, VBlocks, VEntities, VComponents, VAttachments, VMenus,
-│                                 // VSounds, VParticles, VBiomeSources, VStructureTypes, VFeatures,
-│                                 // VLootModifiers, VCreativeTabs, VGameRules, VDamageTypes
+├── Vestige.java                  // @Mod entry: registers configs, initializes the module list
+├── VestigeIds.java               // MOD_ID, logger, id() helper
+├── core/                         // VestigeModule, ModuleLoader, VestigeModules (module list)
 ├── config/                       // ServerConfig, ClientConfig (ModConfigSpec)
 ├── network/                      // Payload records + registration (§6), one sub-package per feature
 ├── progression/                  // WorldProgress (SavedData): bosses, wicks, resounding, flags
@@ -144,7 +183,8 @@ src/main/java/dev/vestige/
 │   ├── render/                   // GeckoLib renderers, telegraph decals, hit FX
 │   └── sound/                    // Hush and Warden ducking, telegraph cues
 ├── datagen/                      // Providers: models, blockstates, lang, loot, recipes, tags
-└── gametest/                     // GameTests per subsystem
+├── dev/                          // Dev-only hooks behind system properties (smoke autostop, test driver)
+└── gametest/                     // GameTests per subsystem (gametest/<module>/)
 src/main/resources/
 ├── META-INF/neoforge.mods.toml
 ├── assets/vestige/{textures,models,geo,animations,player_animations,lang,sounds}
@@ -165,7 +205,9 @@ docs/                             // GDD, ARCHITECTURE, per-system docs
 |---|---|---|---|---|---|
 | `vitals` | stamina, maxStaminaBonus, resonance, flaskCharges, flaskMax, kindling, emberHearts, resonantHearts, breathStones | ✅ | ✅ | ✅ | ❌ |
 | `glim` | carried Glim | ✅ | ✅ (0 after death, ghost holds it) | ✅ | ❌ |
-| `rpg_inventory` | Main, Secondary, swap set, Rings[2], Talismans[2], Relics[4], stance stash (main and off-hand) | ✅ | ✅ (always kept) | ✅ | ✅ (visuals) |
+| `rpg_inventory` | Main, Secondary, Rings[2], Talismans[2], Relics[4], active relic, stance flag, stance slot, stance stash (main and off-hand) | ✅ | ✅ (always kept) | ✅ | ❌ *(M5: other players see the stance weapons through vanilla held-item sync; the private slots stay private. Swap set: M6)* |
+| `attributes` *(M5)* | the six attribute values | ✅ | ✅ | ✅ | ❌ |
+| `status` *(M5, any living entity)* | status meters, timers, Voidbite flag | ✅ | ❌ | ✅ | ❌ |
 | `combat_state` | current action id, phase, tick, stance, lock target id, poise | ❌ (transient) | ❌ | ✅ | ✅ (for animation) |
 | `discovery` | lit Waylights, discovered structures, secrets, bestiary counts, lore | ✅ | ✅ | ✅ | ❌ |
 | `quests` | active and completed quests, objective progress | ✅ | ✅ | ✅ | ❌ |
@@ -193,6 +235,8 @@ Rules: mutate through a service class only (`Vitals.spendStamina(player, n)`), a
 | `vestige:etching` | Non-unique weapons | art override id |
 
 Base stats live in datapack JSON (`data/vestige/weapons/*.json`) keyed by item id, so balancing needs no code change. Components hold only per-stack state (reinforcement, prefix, etching).
+
+*M5 implementation:* the base stats live only in synced data tables keyed by item id: `vestige/weapons`, `vestige/armor`, `vestige/accessories` and `vestige/armor_sets`. No component exists yet, because no per-stack state does. `vestige:reinforcement` and `vestige:prefix` arrive with reinforcement and reforging in M6.
 
 ### 5.4 Data-driven content (reloadable)
 
@@ -266,6 +310,11 @@ Vanilla sources (fall, lava, vanilla mobs) × hpScale (5) in LivingIncomingDamag
 - **Stance swap** is server-side and atomic. On entering combat stance: `stash.main ← hotbar[selected]`, `hotbar[selected] ← rpg.main`, and the same for the off-hand. Leaving reverses it. While in stance, the selected hotbar index is locked, and `ItemTossEvent` is cancelled and restored for the swapped stacks. The swap is reversed on: opening any container, death (before drops), logout, dimension change, and server stop. A GameTest suite covers each path for no-duplication and no-loss.
 - **StatSheet** is recomputed when equipment changes (not every tick). It is applied through attribute modifiers (`MAX_HEALTH`, `MOVEMENT_SPEED`) and cached values (absorptions, poise, burden, roll profile).
 - **AccessoryEffect** registry: an id → behavior object with hooks (`onHit`, `onDodge`, `onTick`, `modifyStats`, `onDamaged`). Families are used for exclusivity.
+- *M5 implementation:*
+  - **Stat changes:** numeric effects are `StatMods` in data (summed by `StatCalculator`).
+  - **Rule-changing effects:** these are **perk ids** (`stats.Perks`) checked where the rule lives, e.g. the Hollow Ring in the roll choice, the Waxen Ring in parry handling, the Toll in the weapon-hit event. A separate registry would have been an indirection with one implementation per id.
+  - **Recomputing the stat sheet:** it is cached by a fingerprint of equipment, attributes, stance and data generation, and rebuilt on change on both sides.
+  - **Applying it:** max health uses the `vestige:vitality` modifier (ADD_VALUE of bonus ÷ health scale); the Spurs and Diver's Bell use transient attribute modifiers.
 
 ### 7.4 The Pale (GDD §6.1, ADR-003)
 
@@ -311,6 +360,11 @@ Vanilla sources (fall, lava, vanilla mobs) × hpScale (5) in LivingIncomingDamag
 ### 7.11 Client UI kit (GDD §9.5)
 A reusable tile kit modeled on the owner's Elden Ring reference: `Tile` (24 and 28 px variants with vignette, frame, ghost silhouette, hairline rule, serif count), `Cluster` layout, a `Tooltip` frame, and the `ReadinessCross` (shared by the equipment screen and the HUD). It uses nine-slice textures generated by `tools/` so every screen is visually consistent.
 
+*M5 implementation:*
+- The tile is drawn procedurally (`EquipmentScreen.tile`: gradient slate, stone frame, shadow line, rarity rule, chained variant), not from nine-slice textures. It scales cleanly with GUI scale, and the Attunement screen and the HUD cross share it.
+- Ghost silhouettes are 9×9 pixel masks.
+- Text uses the vanilla font.
+
 ### 7.12 Configuration
 `ModConfigSpec` server config (border, rings, Hush, combat, death mode, NPC, bosses, quests) and client config (HUD, camera smoothing, damage numbers). Listed in GDD §27.
 
@@ -320,7 +374,7 @@ A reusable tile kit modeled on the owner's Elden Ring reference: `Tile` (24 and 
 
 ### 8.1 Sources
 - **Textures:** 16×16 (items and blocks) and entity sheets, generated or edited by `tools/*.py` (PIL) with fixed regional palettes (GDD §25). Original pixel art, no imported third-party assets.
-- **Models:** block and item models via datagen. Entity models are GeckoLib `.geo.json` (Blockbench-compatible), authored by `tools/` builders from cuboid definitions so they stay editable in Blockbench later.
+- **Models:** block models via datagen. Weapons are 3D element item models (Blockbench Java-model format) from `tools/gen_item_models.py`, shown in hands, on the ground and on heads, with the flat sprite kept for the inventory via `neoforge:separate_transforms`. Entity models are GeckoLib `.geo.json` (Blockbench-compatible) from `tools/gen_models.py`, built from cuboid definitions so they stay editable in Blockbench later.
 - **Animations:** GeckoLib `.animation.json` for entities and playerAnimator JSON for the player.
 
 ### 8.2 Timing sync: animations generated from movesets
@@ -342,15 +396,33 @@ Player attack animations are **generated from the same moveset JSON** the server
 | Visual | `runClient` under `xvfb-run` (Mesa llvmpipe) + `--quickPlaySingleplayer` + screenshots | HUD, screens, entity models, animations, telegraph visuals |
 | Manual (owner) | Real client | Feel, audio, balance |
 
+### 9.1a Commands (implemented in M2)
+| Command | What it runs |
+|---|---|
+| `./gradlew build` | Compile, unit tests, architecture rules, JAR (`build/libs/vestige-<version>.jar`) |
+| `./gradlew runGameTestServer` | All GameTests headless; the task fails if any required test fails |
+| `./gradlew runServer -Psmoke` | Dev dedicated server; logs `VESTIGE SMOKE …` and stops itself |
+| `scripts/prod-server-smoke.sh` | Installs the real NeoForge server and loads the **built JAR** (including Jar-in-Jar libraries) |
+| `scripts/verify.sh` | All of the above in sequence |
+| `scripts/client-driver.sh [combat\|anim\|calib]` | Real client, headless, in a fresh world: scripted combat scenario with `DRIVER CHECK` assertions and screenshots (exits non-zero on failures) |
+| `xvfb-run ./gradlew runClient -PquickPlay=<world>` | Headless client straight into a world (screenshots via ImageMagick `import`) |
+
+See [DEVELOPMENT.md](DEVELOPMENT.md) for details.
+
 ### 9.2 Definition of done (per feature)
 1. Code compiles (`./gradlew build`) with no new warnings in VESTIGE code.
 2. Unit tests and GameTests for the feature pass. Earlier tests still pass.
-3. A dedicated-server smoke run passes.
+3. A dedicated-server smoke run passes (`scripts/verify.sh`, including the production-server run with the built JAR).
 4. For visual features: a screenshot from the headless client is reviewed. Features that can't be verified here (audio, real-time feel) are listed as **not verified** in the milestone report.
 5. Docs are updated (GDD if the design changed, `docs/systems/<system>.md` for the implementation).
 
 ### 9.3 Dev test driver
 No input automation tool is installed, so a **dev-only** client driver (enabled by a system property in the `client` run config, compiled out of release behavior) runs scripted sequences: spawn dummy, enter stance, attack, roll, open screen, then capture screenshots through Minecraft's own `Screenshot.grab`. This makes visual checks deterministic and repeatable. **[verify Screenshot API in M3]**
+
+*M5:*
+- **Scenarios:** an `equipment` scenario, plus `mp_a` and `mp_b` for `scripts/multiplayer-test.sh`. That script runs a dev dedicated server (offline mode, flat world, both test players as operators) and two clients: the `client` and `client2` run configs, the second with its own game directory and the name "Dev2".
+- **Hover tooltips** are captured by moving the real cursor position (dev-only reflection on `MouseHandler`).
+- **Menu clicks** are real `handleInventoryMouseClick` calls.
 
 ---
 
@@ -383,6 +455,9 @@ Spark-style profiling is done in M12. GameTests assert worst-case timings for th
 | 008 | Content as datapack JSON, behaviors by registered id | Fast balancing, reloadable, mod-pack friendly | Hard-coded stats |
 | 009 | Server-authoritative outcomes, client-predicted feel with bounded latency tolerance | Responsive and multiplayer-safe | Fully client-authoritative hits (cheatable) |
 | 010 | New-world requirement | World presets apply at creation | Retro-generating existing worlds (unsafe) |
+| 011 (rev. 2, M4) | Every enemy, humanoids included, is a GeckoLib model (`AnimatedMob`): keyframed idle/walk/death, with combat poses sampled from the shared `PoseTimeline` and blended over the bones each frame through a per-body binding table (`TimelineGeoModel`: humanoid, quadruped). *Rev. 1 (M3) posed a vanilla `HumanoidModel`; replaced at the owner's request for distinctive, high-quality models and animations* | One pose definition still drives players (playerAnimator) and enemies, so hitboxes and animation stay in sync; enemies get distinctive silhouettes (hoods, claws, chains), elbows/knees and root motion that the vanilla biped lacks | Fully hand-keyframed attack animations per enemy (would drift from hitbox timing); vanilla biped (too stiff and generic) |
+| 012 | Datapack content goes through `core.SyncedDataTable`; server→client sends go through `core.Net` | One reload/sync path for movesets, weapons and enemies; a connection without VESTIGE channels (another mod's fake player) never crashes a send | Per-table hand-written packets; unguarded `PacketDistributor` calls |
+| 013 | Player combat prediction runs the same `PlayerCombatMachine` as the server | Instant animation on press with near-zero divergence; inputs carry a sequence number for reconciliation | Server-only timing (laggy feel); separate client logic (drift) |
 
 ---
 

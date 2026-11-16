@@ -1,0 +1,22 @@
+{
+  "items": [
+    "vestige:wanderer_boots"
+  ],
+  "slot": "feet",
+  "set": "vestige:wanderer",
+  "weight": 1.2,
+  "stats": {
+    "poise": 1,
+    "absorption": {
+      "slash": 0.03,
+      "strike": 0.03,
+      "pierce": 0.03,
+      "cinder": 0.02,
+      "hush": 0.03,
+      "void": 0.01,
+      "radiance": 0.01,
+      "resonance": 0.01
+    }
+  },
+  "rarity": "common"
+}

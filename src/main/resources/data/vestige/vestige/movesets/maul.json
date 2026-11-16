@@ -1,0 +1,209 @@
+{
+  "actions": {
+    "light_1": {
+      "timing": {
+        "windup": 14,
+        "active": 4,
+        "recovery": 16,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 4
+      },
+      "power": {
+        "stamina": 24,
+        "motion_value": 1.3,
+        "poise_damage": 25,
+        "damage": 0
+      },
+      "pose": "maul_overhead",
+      "hit": {
+        "type": "arc",
+        "reach": 2.5,
+        "from": 18,
+        "to": -18,
+        "y_min": 0.0,
+        "y_max": 2.2
+      },
+      "motion": {
+        "active": 0.08
+      }
+    },
+    "light_2": {
+      "timing": {
+        "windup": 14,
+        "active": 4,
+        "recovery": 16,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 4
+      },
+      "power": {
+        "stamina": 24,
+        "motion_value": 1.3,
+        "poise_damage": 25,
+        "damage": 0
+      },
+      "pose": "maul_swing",
+      "hit": {
+        "type": "arc",
+        "reach": 2.6,
+        "from": 90,
+        "to": -60,
+        "y_min": 0.0,
+        "y_max": 2.2
+      },
+      "motion": {
+        "active": 0.08
+      }
+    },
+    "heavy": {
+      "timing": {
+        "windup": 20,
+        "active": 5,
+        "recovery": 20,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 6
+      },
+      "power": {
+        "stamina": 40,
+        "motion_value": 1.7,
+        "poise_damage": 40,
+        "damage": 0
+      },
+      "pose": "maul_heavy",
+      "hyperarmor": true,
+      "hit": {
+        "type": "circle",
+        "radius": 2.0,
+        "offset": 1.4,
+        "y_min": -0.5,
+        "y_max": 1.6
+      },
+      "charge": {
+        "max_ticks": 16,
+        "motion_bonus": 0.7,
+        "poise_bonus": 20
+      }
+    },
+    "running": {
+      "timing": {
+        "windup": 10,
+        "active": 4,
+        "recovery": 14,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 4
+      },
+      "power": {
+        "stamina": 26,
+        "motion_value": 1.35,
+        "poise_damage": 26,
+        "damage": 0
+      },
+      "pose": "maul_overhead",
+      "hit": {
+        "type": "arc",
+        "reach": 2.6,
+        "from": 40,
+        "to": -40,
+        "y_min": 0.0,
+        "y_max": 2.2
+      },
+      "motion": {
+        "windup": 0.3,
+        "active": 0.1
+      }
+    },
+    "rolling": {
+      "timing": {
+        "windup": 8,
+        "active": 4,
+        "recovery": 14,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 4
+      },
+      "power": {
+        "stamina": 20,
+        "motion_value": 1.1,
+        "poise_damage": 20,
+        "damage": 0
+      },
+      "pose": "maul_swing",
+      "hit": {
+        "type": "arc",
+        "reach": 2.6,
+        "from": 60,
+        "to": -60,
+        "y_min": 0.0,
+        "y_max": 2.2
+      }
+    },
+    "tremor": {
+      "timing": {
+        "windup": 16,
+        "active": 3,
+        "recovery": 20,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 7
+      },
+      "power": {
+        "stamina": 30,
+        "motion_value": 1.5,
+        "poise_damage": 70,
+        "damage": 0
+      },
+      "pose": "maul_tremor",
+      "hyperarmor": true,
+      "hit": {
+        "type": "circle",
+        "radius": 3.5,
+        "offset": 0.0,
+        "y_min": -0.5,
+        "y_max": 1.4
+      },
+      "art": {
+        "cost": 35
+      }
+    },
+    "riposte": {
+      "timing": {
+        "windup": 9,
+        "active": 4,
+        "recovery": 16,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 10
+      },
+      "power": {
+        "stamina": 0,
+        "motion_value": 2.6,
+        "poise_damage": 0,
+        "damage": 0
+      },
+      "pose": "maul_riposte",
+      "hit": {
+        "type": "arc",
+        "reach": 2.6,
+        "from": 20,
+        "to": -20,
+        "y_min": 0.0,
+        "y_max": 2.2
+      },
+      "defense": {
+        "invulnerable": true
+      }
+    }
+  },
+  "art": "tremor",
+  "riposte": "riposte",
+  "light": [
+    "light_1",
+    "light_2"
+  ],
+  "heavy": "heavy",
+  "running": "running",
+  "rolling": "rolling"
+}

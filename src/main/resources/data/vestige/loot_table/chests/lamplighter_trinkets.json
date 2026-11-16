@@ -1,0 +1,70 @@
+{
+  "type": "minecraft:chest",
+  "random_sequence": "vestige:chests/lamplighter_trinkets",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:empty",
+          "weight": 40
+        },
+        {
+          "type": "minecraft:item",
+          "name": "vestige:ring_of_quick_breath",
+          "weight": 6
+        },
+        {
+          "type": "minecraft:item",
+          "name": "vestige:bellbronze_band",
+          "weight": 6
+        },
+        {
+          "type": "minecraft:item",
+          "name": "vestige:lightfoot_feather",
+          "weight": 6
+        },
+        {
+          "type": "minecraft:item",
+          "name": "vestige:talisman_of_the_grove",
+          "weight": 5
+        },
+        {
+          "type": "minecraft:item",
+          "name": "vestige:bell_of_warding",
+          "weight": 5
+        },
+        {
+          "type": "minecraft:item",
+          "name": "vestige:harts_ring",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "vestige:waxen_ring",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "vestige:ember_signet",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "vestige:tithe_ring",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "vestige:kindling_ember",
+          "weight": 8
+        },
+        {
+          "type": "minecraft:item",
+          "name": "vestige:flask_wick",
+          "weight": 4
+        }
+      ]
+    }
+  ]
+}

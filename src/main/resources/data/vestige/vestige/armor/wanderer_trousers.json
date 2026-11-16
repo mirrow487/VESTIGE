@@ -1,0 +1,22 @@
+{
+  "items": [
+    "vestige:wanderer_trousers"
+  ],
+  "slot": "legs",
+  "set": "vestige:wanderer",
+  "weight": 2.4,
+  "stats": {
+    "poise": 2,
+    "absorption": {
+      "slash": 0.05,
+      "strike": 0.05,
+      "pierce": 0.05,
+      "cinder": 0.03,
+      "hush": 0.05,
+      "void": 0.02,
+      "radiance": 0.02,
+      "resonance": 0.02
+    }
+  },
+  "rarity": "common"
+}

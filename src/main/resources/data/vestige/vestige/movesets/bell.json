@@ -1,0 +1,126 @@
+{
+  "actions": {
+    "peal": {
+      "timing": {
+        "windup": 7,
+        "active": 3,
+        "recovery": 8,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 3
+      },
+      "power": {
+        "stamina": 12,
+        "motion_value": 0.9,
+        "poise_damage": 10,
+        "damage": 0
+      },
+      "pose": "bell_peal",
+      "hit": {
+        "type": "ring",
+        "reach": 2.2,
+        "radius": 1.0,
+        "offset": 1.6,
+        "y_min": -0.5,
+        "y_max": 2.0
+      }
+    },
+    "toll": {
+      "timing": {
+        "windup": 14,
+        "active": 6,
+        "recovery": 12,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 4
+      },
+      "power": {
+        "stamina": 22,
+        "motion_value": 1.3,
+        "poise_damage": 30,
+        "damage": 0
+      },
+      "pose": "bell_toll",
+      "hyperarmor": true,
+      "hit": {
+        "type": "ring",
+        "reach": 4.5,
+        "radius": 1.2,
+        "offset": 0.0,
+        "y_min": -0.5,
+        "y_max": 1.4
+      },
+      "charge": {
+        "max_ticks": 12,
+        "motion_bonus": 0.4,
+        "poise_bonus": 15
+      }
+    },
+    "great_toll": {
+      "timing": {
+        "windup": 12,
+        "active": 8,
+        "recovery": 14,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 4
+      },
+      "power": {
+        "stamina": 16,
+        "motion_value": 1.2,
+        "poise_damage": 60,
+        "damage": 0
+      },
+      "pose": "bell_great_toll",
+      "hyperarmor": true,
+      "hit": {
+        "type": "ring",
+        "reach": 7.0,
+        "radius": 1.5,
+        "offset": 0.0,
+        "y_min": -0.5,
+        "y_max": 2.4
+      },
+      "inflict_stagger": 25,
+      "art": {
+        "cost": 20
+      }
+    },
+    "riposte": {
+      "timing": {
+        "windup": 6,
+        "active": 3,
+        "recovery": 14,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 9
+      },
+      "power": {
+        "stamina": 0,
+        "motion_value": 2.6,
+        "poise_damage": 0,
+        "damage": 0,
+        "physical": "strike"
+      },
+      "pose": "bell_riposte",
+      "hit": {
+        "type": "circle",
+        "radius": 1.8,
+        "offset": 1.0,
+        "y_min": -0.5,
+        "y_max": 2.2
+      },
+      "defense": {
+        "invulnerable": true
+      }
+    }
+  },
+  "art": "great_toll",
+  "riposte": "riposte",
+  "light": [
+    "peal"
+  ],
+  "heavy": "toll",
+  "running": "peal",
+  "rolling": "peal"
+}

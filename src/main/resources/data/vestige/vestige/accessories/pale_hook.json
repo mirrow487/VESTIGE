@@ -1,0 +1,12 @@
+{
+  "items": [
+    "vestige:pale_hook"
+  ],
+  "kind": "relic",
+  "weight": 1.0,
+  "rarity": "relic",
+  "description": "Active (G): grapple to a surface up to 24 blocks away.",
+  "stats": {
+    "perk": "pale_hook"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "items": [
+    "vestige:ring_of_quick_breath"
+  ],
+  "kind": "ring",
+  "weight": 0.5,
+  "rarity": "uncommon",
+  "description": "Breathe easier between blows.",
+  "stats": {
+    "stamina_regen": 0.15
+  }
+}

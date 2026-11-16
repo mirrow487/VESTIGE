@@ -1,0 +1,12 @@
+{
+  "items": [
+    "vestige:ledger_of_debts"
+  ],
+  "kind": "talisman",
+  "weight": 0.5,
+  "rarity": "rare",
+  "description": "+25% damage, but each hit you take costs 1% of your Glim.",
+  "stats": {
+    "perk": "ledger_of_debts"
+  }
+}

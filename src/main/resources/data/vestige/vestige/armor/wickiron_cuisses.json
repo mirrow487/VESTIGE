@@ -1,0 +1,22 @@
+{
+  "items": [
+    "vestige:wickiron_cuisses"
+  ],
+  "slot": "legs",
+  "set": "vestige:wickiron",
+  "weight": 9.0,
+  "stats": {
+    "poise": 10,
+    "absorption": {
+      "slash": 0.13,
+      "strike": 0.13,
+      "pierce": 0.13,
+      "cinder": 0.1,
+      "resonance": 0.05,
+      "hush": 0.04,
+      "void": 0.05,
+      "radiance": 0.04
+    }
+  },
+  "rarity": "rare"
+}

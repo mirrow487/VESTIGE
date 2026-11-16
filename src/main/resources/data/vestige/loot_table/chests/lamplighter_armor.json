@@ -1,0 +1,55 @@
+{
+  "type": "minecraft:chest",
+  "random_sequence": "vestige:chests/lamplighter_armor",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:empty",
+          "weight": 30
+        },
+        {
+          "type": "minecraft:item",
+          "name": "vestige:bellbronze_helm",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "vestige:bellbronze_mail",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "vestige:bellbronze_tassets",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "vestige:bellbronze_sabatons",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "vestige:wickiron_helm",
+          "weight": 2
+        },
+        {
+          "type": "minecraft:item",
+          "name": "vestige:wickiron_plate",
+          "weight": 2
+        },
+        {
+          "type": "minecraft:item",
+          "name": "vestige:wickiron_cuisses",
+          "weight": 2
+        },
+        {
+          "type": "minecraft:item",
+          "name": "vestige:wickiron_greaves",
+          "weight": 2
+        }
+      ]
+    }
+  ]
+}

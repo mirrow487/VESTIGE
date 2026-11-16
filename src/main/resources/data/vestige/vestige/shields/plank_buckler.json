@@ -1,0 +1,9 @@
+{
+  "items": [
+    "vestige:plank_buckler"
+  ],
+  "kind": "buckler",
+  "absorption": 0.7,
+  "stability": 35,
+  "weight": 1.5
+}

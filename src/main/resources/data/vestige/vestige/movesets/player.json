@@ -1,0 +1,339 @@
+{
+  "actions": {
+    "roll": {
+      "timing": {
+        "windup": 0,
+        "active": 10,
+        "recovery": 6,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 0
+      },
+      "power": {
+        "stamina": 16,
+        "motion_value": 1.0,
+        "poise_damage": 0,
+        "damage": 0
+      },
+      "pose": "roll",
+      "dodge": {
+        "iframe_start": 3,
+        "iframe_end": 10,
+        "distance": 3.5,
+        "move_ticks": 10
+      }
+    },
+    "roll_light": {
+      "timing": {
+        "windup": 0,
+        "active": 10,
+        "recovery": 5,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 0
+      },
+      "power": {
+        "stamina": 14,
+        "motion_value": 1.0,
+        "poise_damage": 0,
+        "damage": 0
+      },
+      "pose": "roll",
+      "dodge": {
+        "iframe_start": 2,
+        "iframe_end": 10,
+        "distance": 4.5,
+        "move_ticks": 10
+      }
+    },
+    "roll_heavy": {
+      "timing": {
+        "windup": 0,
+        "active": 11,
+        "recovery": 8,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 0
+      },
+      "power": {
+        "stamina": 20,
+        "motion_value": 1.0,
+        "poise_damage": 0,
+        "damage": 0
+      },
+      "pose": "roll",
+      "dodge": {
+        "iframe_start": 4,
+        "iframe_end": 8,
+        "distance": 2.5,
+        "move_ticks": 11
+      }
+    },
+    "roll_overburdened": {
+      "timing": {
+        "windup": 0,
+        "active": 12,
+        "recovery": 12,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 0
+      },
+      "power": {
+        "stamina": 25,
+        "motion_value": 1.0,
+        "poise_damage": 0,
+        "damage": 0
+      },
+      "pose": "roll_stumble",
+      "dodge": {
+        "iframe_start": 0,
+        "iframe_end": 0,
+        "distance": 1.2,
+        "move_ticks": 10
+      }
+    },
+    "roll_blink": {
+      "timing": {
+        "windup": 0,
+        "active": 6,
+        "recovery": 4,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 0
+      },
+      "power": {
+        "stamina": 16,
+        "motion_value": 1.0,
+        "poise_damage": 0,
+        "damage": 0
+      },
+      "pose": "blink_step",
+      "dodge": {
+        "iframe_start": 0,
+        "iframe_end": 7,
+        "distance": 2.8,
+        "move_ticks": 3
+      }
+    },
+    "backstep": {
+      "timing": {
+        "windup": 0,
+        "active": 7,
+        "recovery": 5,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 0
+      },
+      "power": {
+        "stamina": 10,
+        "motion_value": 1.0,
+        "poise_damage": 0,
+        "damage": 0
+      },
+      "pose": "backstep",
+      "dodge": {
+        "iframe_start": 2,
+        "iframe_end": 7,
+        "distance": 1.6,
+        "move_ticks": 7
+      }
+    },
+    "flinch": {
+      "timing": {
+        "windup": 0,
+        "active": 0,
+        "recovery": 8,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 0
+      },
+      "power": {
+        "stamina": 0,
+        "motion_value": 1.0,
+        "poise_damage": 0,
+        "damage": 0
+      },
+      "pose": "flinch"
+    },
+    "stagger": {
+      "timing": {
+        "windup": 0,
+        "active": 0,
+        "recovery": 24,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 0
+      },
+      "power": {
+        "stamina": 0,
+        "motion_value": 1.0,
+        "poise_damage": 0,
+        "damage": 0
+      },
+      "pose": "stagger"
+    },
+    "guard_weapon": {
+      "timing": {
+        "windup": 4,
+        "active": 1,
+        "recovery": 6,
+        "combo_window": 0.0,
+        "cancel_window": 0.0,
+        "hitstop": 0
+      },
+      "power": {
+        "stamina": 0,
+        "motion_value": 1.0,
+        "poise_damage": 0,
+        "damage": 0
+      },
+      "pose": "guard_weapon",
+      "charge": {
+        "max_ticks": 6000,
+        "motion_bonus": 0
+      },
+      "defense": {
+        "guard": true
+      }
+    },
+    "guard_shield": {
+      "timing": {
+        "windup": 3,
+        "active": 1,
+        "recovery": 5,
+        "combo_window": 0.0,
+        "cancel_window": 0.0,
+        "hitstop": 0
+      },
+      "power": {
+        "stamina": 0,
+        "motion_value": 1.0,
+        "poise_damage": 0,
+        "damage": 0
+      },
+      "pose": "guard_shield",
+      "charge": {
+        "max_ticks": 6000,
+        "motion_bonus": 0
+      },
+      "defense": {
+        "guard": true
+      }
+    },
+    "guard_bulwark": {
+      "timing": {
+        "windup": 5,
+        "active": 1,
+        "recovery": 7,
+        "combo_window": 0.0,
+        "cancel_window": 0.0,
+        "hitstop": 0
+      },
+      "power": {
+        "stamina": 0,
+        "motion_value": 1.0,
+        "poise_damage": 0,
+        "damage": 0
+      },
+      "pose": "guard_bulwark",
+      "charge": {
+        "max_ticks": 6000,
+        "motion_bonus": 0
+      },
+      "defense": {
+        "guard": true
+      }
+    },
+    "parry_buckler": {
+      "timing": {
+        "windup": 2,
+        "active": 4,
+        "recovery": 12,
+        "combo_window": 0.5,
+        "cancel_window": 0.5,
+        "hitstop": 0
+      },
+      "power": {
+        "stamina": 8,
+        "motion_value": 1.0,
+        "poise_damage": 0,
+        "damage": 0
+      },
+      "pose": "parry_buckler",
+      "defense": {
+        "parry": {
+          "start": 2,
+          "end": 6
+        }
+      }
+    },
+    "guard_break": {
+      "timing": {
+        "windup": 0,
+        "active": 0,
+        "recovery": 24,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 0
+      },
+      "power": {
+        "stamina": 0,
+        "motion_value": 1.0,
+        "poise_damage": 0,
+        "damage": 0
+      },
+      "pose": "guard_break"
+    },
+    "flask_drink": {
+      "timing": {
+        "windup": 8,
+        "active": 20,
+        "recovery": 8,
+        "combo_window": 0.0,
+        "cancel_window": 0.5,
+        "hitstop": 0
+      },
+      "power": {
+        "stamina": 0,
+        "motion_value": 1.0,
+        "poise_damage": 0,
+        "damage": 0
+      },
+      "pose": "flask_drink"
+    },
+    "flask_empty": {
+      "timing": {
+        "windup": 0,
+        "active": 0,
+        "recovery": 18,
+        "combo_window": 0.0,
+        "cancel_window": 0.6,
+        "hitstop": 0
+      },
+      "power": {
+        "stamina": 0,
+        "motion_value": 1.0,
+        "poise_damage": 0,
+        "damage": 0
+      },
+      "pose": "flask_shake"
+    },
+    "rest": {
+      "timing": {
+        "windup": 6,
+        "active": 1,
+        "recovery": 28,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 0
+      },
+      "power": {
+        "stamina": 0,
+        "motion_value": 1.0,
+        "poise_damage": 0,
+        "damage": 0
+      },
+      "pose": "rest_kneel"
+    }
+  }
+}

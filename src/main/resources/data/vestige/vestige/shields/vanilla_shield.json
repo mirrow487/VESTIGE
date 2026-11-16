@@ -1,0 +1,9 @@
+{
+  "items": [
+    "minecraft:shield"
+  ],
+  "kind": "kite",
+  "absorption": 0.9,
+  "stability": 55,
+  "weight": 4.0
+}

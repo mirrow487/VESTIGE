@@ -1,0 +1,22 @@
+{
+  "items": [
+    "vestige:wanderer_hood"
+  ],
+  "slot": "head",
+  "set": "vestige:wanderer",
+  "weight": 1.2,
+  "stats": {
+    "poise": 1,
+    "absorption": {
+      "slash": 0.03,
+      "strike": 0.03,
+      "pierce": 0.03,
+      "cinder": 0.02,
+      "hush": 0.04,
+      "void": 0.02,
+      "radiance": 0.02,
+      "resonance": 0.02
+    }
+  },
+  "rarity": "common"
+}

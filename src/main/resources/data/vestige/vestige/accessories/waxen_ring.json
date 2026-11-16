@@ -1,0 +1,12 @@
+{
+  "items": [
+    "vestige:waxen_ring"
+  ],
+  "kind": "ring",
+  "weight": 0.5,
+  "rarity": "rare",
+  "description": "A successful parry heals 5% of your health.",
+  "stats": {
+    "perk": "waxen_ring"
+  }
+}

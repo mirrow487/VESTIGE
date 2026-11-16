@@ -1,0 +1,51 @@
+{
+  "moveset": "vestige:tolling_ram",
+  "health": 140,
+  "defense": 15,
+  "poise": 35,
+  "poise_regen_delay": 70,
+  "glim": 64,
+  "family": "beast",
+  "defenses": {
+    "slash": 14,
+    "strike": 24,
+    "pierce": 8,
+    "cinder": 8,
+    "resonance": 20,
+    "hush": 9,
+    "void": 9,
+    "radiance": 9
+  },
+  "weaknesses": {
+    "cinder": 1.2,
+    "resonance": 0.7
+  },
+  "engage": {
+    "min": 2.0,
+    "max": 7.0,
+    "strafe_speed": 0.4,
+    "pause_min": 18,
+    "pause_max": 40
+  },
+  "attacks": [
+    {
+      "action": "butt_charge",
+      "weight": 4,
+      "min_range": 3.5,
+      "max_range": 9.0,
+      "cooldown": 90
+    },
+    {
+      "action": "toll_ring",
+      "weight": 2,
+      "max_range": 4.0,
+      "cooldown": 100
+    },
+    {
+      "action": "headbutt",
+      "weight": 4,
+      "max_range": 2.4,
+      "cooldown": 30
+    }
+  ]
+}

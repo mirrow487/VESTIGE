@@ -1,0 +1,14 @@
+{
+  "items": [
+    "vestige:bellbronze_spurs"
+  ],
+  "kind": "relic",
+  "weight": 1.0,
+  "rarity": "uncommon",
+  "description": "Sprint 15% faster for half the stamina.",
+  "stats": {
+    "sprint_speed": 0.15,
+    "sprint_stamina_factor": 0.5,
+    "perk": "bellbronze_spurs"
+  }
+}

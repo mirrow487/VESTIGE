@@ -1,0 +1,13 @@
+{
+  "items": [
+    "vestige:windsail_cape"
+  ],
+  "kind": "relic",
+  "weight": 1.0,
+  "rarity": "rare",
+  "description": "Hold jump while falling to glide.",
+  "stats": {
+    "perk": "windsail_cape"
+  },
+  "family": "air"
+}

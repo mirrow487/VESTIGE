@@ -1,0 +1,47 @@
+{
+ "format_version": "1.8.0",
+ "animations": {
+  "animation.armor.idle": {
+   "loop": true,
+   "animation_length": 2.8,
+   "bones": {
+    "candles": {
+     "scale": {
+      "0.00": {
+       "vector": [
+        1,
+        1,
+        1
+       ],
+       "easing": "easeInOutSine"
+      },
+      "0.84": {
+       "vector": [
+        1,
+        1.04,
+        1
+       ],
+       "easing": "easeInOutSine"
+      },
+      "1.68": {
+       "vector": [
+        1,
+        0.98,
+        1
+       ],
+       "easing": "easeInOutSine"
+      },
+      "2.80": {
+       "vector": [
+        1,
+        1,
+        1
+       ],
+       "easing": "easeInOutSine"
+      }
+     }
+    }
+   }
+  }
+ }
+}

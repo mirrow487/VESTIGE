@@ -1,0 +1,12 @@
+{
+  "items": [
+    "vestige:tithe_ring"
+  ],
+  "kind": "ring",
+  "weight": 0.5,
+  "rarity": "rare",
+  "description": "Every kill rings 8 Resonance into you.",
+  "stats": {
+    "perk": "tithe_ring"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "items": [
+    "vestige:divers_bell"
+  ],
+  "kind": "relic",
+  "weight": 1.5,
+  "rarity": "uncommon",
+  "description": "Breathe underwater and swim faster.",
+  "stats": {
+    "perk": "divers_bell"
+  }
+}
