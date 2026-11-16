@@ -15,7 +15,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
  */
 public class WaylightScreen extends Screen {
     private static final int SLATE = 0xE01A1B20, SLATE_HI = 0xE0262830, BRASS = 0xFF8A6D3B, PARCH = 0xFFE9DFC6, EMBER = 0xFFE08A3C;
-    private static final int W = 240, ROW = 22;
+    private static final int W = 260, ROW = 22;
     private final WaylightPayloads.Open data;
     private boolean travelling;
     /** For the driver. */
@@ -34,7 +34,7 @@ public class WaylightScreen extends Screen {
     protected void init() {
         current = this;
         clearWidgets();
-        int x = (width - W) / 2 + 20, y = height / 2 - 30;
+        int x = (width - W) / 2 + 20, y = height / 2 - 46;
         if (!travelling) {
             Button rest = Button.builder(Component.translatable("gui.vestige.waylight.rest"), b -> {
                 PacketDistributor.sendToServer(new WaylightPayloads.Act(data.pos(), false, net.minecraft.core.GlobalPos.of(
@@ -46,11 +46,18 @@ public class WaylightScreen extends Screen {
             Button travel = Button.builder(Component.translatable("gui.vestige.waylight.travel"), b -> {
                 travelling = true;
                 init();
-            }).bounds(x, y + 26, W - 40, 20).build();
+            }).bounds(x, y + 21, W - 40, 20).build();
             travel.active = data.travelRefusal().equals("NONE") && !data.destinations().isEmpty();
             addRenderableWidget(travel);
+            addRenderableWidget(Button.builder(Component.translatable("gui.vestige.waylight.attune"), b -> showAttune())
+                    .bounds(x, y + 42, W - 40, 20).build());
+            Button kindle = Button.builder(kindleLabel(), b -> kindle()).bounds(x, y + 63, W - 40, 20)
+                    .tooltip(net.minecraft.client.gui.components.Tooltip.create(Component.literal(
+                            "Raise the Wick Flask's Kindling: each sip heals more. Costs a Kindling Ember and Glim."))).build();
+            kindle.active = canKindle();
+            addRenderableWidget(kindle);
             addRenderableWidget(Button.builder(Component.translatable("gui.vestige.waylight.leave"), b -> onClose())
-                    .bounds(x, y + 52, W - 40, 20).build());
+                    .bounds(x, y + 84, W - 40, 20).build());
         } else {
             List<WaylightPayloads.Destination> list = data.destinations();
             int top = height / 2 - Math.min(list.size(), 6) * ROW / 2;
@@ -76,6 +83,35 @@ public class WaylightScreen extends Screen {
         onClose();
     }
 
+    public void showAttune() {
+        minecraft.setScreen(new dev.vestige.client.equipment.AttuneScreen(data.pos(), this));
+    }
+
+    public void kindle() {
+        PacketDistributor.sendToServer(new dev.vestige.equipment.EquipmentNetwork.Kindle(data.pos()));
+        onClose();
+    }
+
+    private Component kindleLabel() {
+        int k = minecraft.player.getData(dev.vestige.player.PlayerModule.FLASK).kindling();
+        if (k >= dev.vestige.player.FlaskRules.MAX_KINDLING) {
+            return Component.literal("Flask fully kindled (+" + k + ")");
+        }
+        return Component.translatable("gui.vestige.waylight.kindle").append(String.format(Locale.ROOT, "  +%d → +%d  (%,d Glim, 1 Ember)",
+                k, k + 1, dev.vestige.equipment.EquipmentNetwork.kindleCost(k)));
+    }
+
+    private boolean canKindle() {
+        var p = minecraft.player;
+        int k = p.getData(dev.vestige.player.PlayerModule.FLASK).kindling();
+        if (k >= dev.vestige.player.FlaskRules.MAX_KINDLING) {
+            return false;
+        }
+        return p.getAbilities().instabuild || (p.getInventory().contains(new net.minecraft.world.item.ItemStack(
+                dev.vestige.equipment.EquipmentItems.KINDLING_EMBER.get())) && p.getData(dev.vestige.player.PlayerModule.GLIM).amount()
+                >= dev.vestige.equipment.EquipmentNetwork.kindleCost(k));
+    }
+
     public void showTravel() {
         travelling = true;
         init();
@@ -89,7 +125,7 @@ public class WaylightScreen extends Screen {
     public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partial) {
         super.renderBackground(g, mouseX, mouseY, partial);
         int x0 = (width - W) / 2, x1 = x0 + W;
-        int y0 = height / 2 - 80, y1 = height / 2 + 80;
+        int y0 = height / 2 - 84, y1 = height / 2 + 84;
         g.fill(x0 - 2, y0 - 2, x1 + 2, y1 + 2, BRASS);
         g.fillGradient(x0, y0, x1, y1, SLATE_HI, SLATE);
         g.fill(x0 + 6, y0 + 30, x1 - 6, y0 + 31, BRASS);
@@ -103,11 +139,11 @@ public class WaylightScreen extends Screen {
     @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float partial) {
         super.render(g, mouseX, mouseY, partial);
-        int y0 = height / 2 - 80;
+        int y0 = height / 2 - 84;
         g.drawString(font, data.name(), (width - W) / 2 + 26, y0 + 11, PARCH, true);
         String hint = travelling ? Component.translatable("gui.vestige.waylight.choose").getString() : refusalText();
         if (!hint.isEmpty()) {
-            g.drawCenteredString(font, hint, width / 2, height / 2 + 64, travelling ? PARCH : 0xFFE07A5F);
+            g.drawCenteredString(font, hint, width / 2, height / 2 + 68, travelling ? PARCH : 0xFFE07A5F);
         }
     }
 

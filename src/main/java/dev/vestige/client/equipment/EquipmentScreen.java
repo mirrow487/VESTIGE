@@ -41,7 +41,7 @@ import org.joml.Vector3f;
 public class EquipmentScreen extends AbstractContainerScreen<EquipmentMenu> {
     static final int SLATE_A = 0xF0121116, SLATE_B = 0xF01C1A21, FRAME = 0xFF5D5A55, SHADOW = 0xFF050406, RULE = 0xFF7A6F5C;
     static final int PARCH = 0xFFD9CFB8, PARCH_DIM = 0xB3D9CFB8, EMBER = 0xFFE08A3C, MUTED = 0xFF8C8475, BAD = 0xFFD86A5A;
-    private static final int DOLL_X = 152, DOLL_Y = 104, CROSS_TOP_Y = 16, CROSS_BOTTOM_Y = 112;
+    private static final int DOLL_X = 132, DOLL_Y = 106, CROSS_TOP_Y = 18, CROSS_BOTTOM_Y = 112;
     private float dollYaw = 200f, dollTargetYaw = 200f;
     private boolean dragging;
     private long openedAt;
@@ -150,7 +150,7 @@ public class EquipmentScreen extends AbstractContainerScreen<EquipmentMenu> {
     public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partial) {
         super.renderBackground(g, mouseX, mouseY, partial);
         // Gritty dark overlay over the blurred world (GDD §9.5).
-        int a = (int) (0x8C * fade());
+        int a = (int) (0xB8 * fade());
         g.fill(0, 0, width, height, a << 24);
         long seed = 0x9E3779B9L;
         for (int i = 0; i < 900; i++) {
@@ -165,17 +165,17 @@ public class EquipmentScreen extends AbstractContainerScreen<EquipmentMenu> {
     protected void renderBg(GuiGraphics g, float partial, int mouseX, int mouseY) {
         int x0 = leftPos, y0 = topPos;
         StatSheet s = Stats.of(minecraft.player);
-        // Header: title and the burden bar.
-        g.fill(x0 + 10, y0 - 12, x0 + 13, y0 - 9, EMBER);
-        g.fill(x0 + 11, y0 - 13, x0 + 12, y0 - 8, EMBER);
-        label(g, "EQUIPMENT", x0 + 17, y0 - 14, PARCH);
-        burden(g, s, x0 + imageWidth - 118, y0 - 14);
+        // Header: title, character level and the burden bar.
+        g.fill(x0 + 9, y0 + 5, x0 + 13, y0 + 11, EMBER);
+        g.fill(x0 + 10, y0 + 3, x0 + 12, y0 + 6, 0xFFFFE2A8);
+        label(g, "EQUIPMENT", x0 + 17, y0 + 4, PARCH);
+        burden(g, s, x0 + imageWidth - 124, y0 + 4);
+        g.fill(x0 + 6, y0 + 14, x0 + imageWidth - 6, y0 + 15, 0x805D5A55);
         // Section labels.
-        label(g, "ARMOR", x0 + 8, y0 + 4, PARCH_DIM);
-        label(g, "READINESS", x0 + 126, y0 + 4, PARCH_DIM);
-        label(g, "RINGS", x0 + 224, y0 + 14, PARCH_DIM);
-        label(g, "TALISMANS", x0 + 224, y0 + 52, PARCH_DIM);
-        label(g, "RELICS", x0 + 214, y0 + 90, PARCH_DIM);
+        label(g, "ARMOR", x0 + 8, y0 + 17, PARCH_DIM);
+        label(g, "RINGS", x0 + 214, y0 + 17, PARCH_DIM);
+        label(g, "TALISMAN", x0 + 214, y0 + 51, PARCH_DIM);
+        label(g, "RELICS", x0 + 214, y0 + 85, PARCH_DIM);
         // Tiles under every slot.
         for (Slot slot : menu.slots) {
             int sx = x0 + slot.x - 2, sy = y0 + slot.y - 2;
@@ -209,13 +209,16 @@ public class EquipmentScreen extends AbstractContainerScreen<EquipmentMenu> {
         tile(g, cx, y0 + CROSS_BOTTOM_Y, 26, 26, inside(mouseX, mouseY, cx, y0 + CROSS_BOTTOM_Y, 26), EMBER, false);
         var flask = minecraft.player.getData(PlayerModule.FLASK);
         g.renderItem(new ItemStack(PlayerModule.WICK_FLASK.get()), cx + 5, y0 + CROSS_BOTTOM_Y + 4);
-        String charges = flask.charges() + "/" + flask.max();
-        g.drawString(font, charges, cx + 25 - font.width(charges), y0 + CROSS_BOTTOM_Y + 17, flask.charges() > 0 ? PARCH : BAD, true);
+        String charges = Integer.toString(flask.charges());
+        g.pose().pushPose();
+        g.pose().translate(0, 0, 200);
+        g.drawString(font, charges, cx + 23 - font.width(charges), y0 + CROSS_BOTTOM_Y + 16, flask.charges() > 0 ? PARCH : BAD, true);
+        g.pose().popPose();
         if (flask.kindling() > 0) {
             g.drawString(font, "+" + flask.kindling(), cx + 2, y0 + CROSS_BOTTOM_Y + 2, EMBER, true);
         }
         doll(g, mouseX, mouseY, partial);
-        stats(g, s, x0, y0 + 142);
+        stats(g, s, x0, y0);
     }
 
     private static boolean inside(int mx, int my, int x, int y, int size) {
@@ -264,60 +267,94 @@ public class EquipmentScreen extends AbstractContainerScreen<EquipmentMenu> {
         player.yHeadRot = head;
     }
 
-    private void stats(GuiGraphics g, StatSheet s, int x0, int y) {
+    private void stats(GuiGraphics g, StatSheet s, int x0, int y0) {
         var player = minecraft.player;
-        g.fill(x0 + 6, y - 4, x0 + imageWidth - 6, y - 3, 0x605D5A55);
-        // Column 1: level, attributes.
-        label(g, "Level " + s.level, x0 + 8, y, PARCH);
-        int ay = y + 10;
+        // Right column: level, attributes, vitals, attack.
+        int c = x0 + 272, y = y0 + 17;
+        g.fill(c - 7, y0 + 20, c - 6, y0 + 138, 0x605D5A55);
+        label(g, "Level " + s.level, c, y, PARCH);
         int i = 0;
         for (Attribute a : Attribute.values()) {
-            label(g, a.abbreviation + " " + s.attr(a), x0 + 8 + (i % 2) * 34, ay + (i / 2) * 9, PARCH_DIM);
+            int v = s.attr(a);
+            label(g, a.abbreviation, c + (i % 2) * 56, y + 11 + (i / 2) * 9, MUTED);
+            String vs = Integer.toString(v);
+            label(g, vs, c + (i % 2) * 56 + 40 - font.width(vs), y + 11 + (i / 2) * 9, v > 10 ? EMBER : PARCH);
             i++;
         }
-        // Column 2: vitals.
-        int c2 = x0 + 82;
-        label(g, String.format(Locale.ROOT, "HP %.0f", player.getMaxHealth()), c2, y, 0xFFC0453A);
-        label(g, String.format(Locale.ROOT, "STA %.0f", s.maxStamina), c2, y + 9, 0xFF63B36C);
-        label(g, String.format(Locale.ROOT, "Poise %.0f", s.poise), c2, y + 18, PARCH_DIM);
-        label(g, String.format(Locale.ROOT, "Load %.1f/%.0f", s.equipLoad, s.equipCapacity), c2, y + 27, PARCH_DIM);
-        // Column 3: attack per type of the main weapon.
-        int c3 = x0 + 150;
+        int vy = y + 42;
+        row(g, c, vy, "Health", String.format(Locale.ROOT, "%.0f", player.getMaxHealth()), 0xFFD0564A);
+        row(g, c, vy + 9, "Stamina", String.format(Locale.ROOT, "%.0f", s.maxStamina), 0xFF63B36C);
+        row(g, c, vy + 18, "Poise", String.format(Locale.ROOT, "%.0f", s.poise), PARCH);
+        row(g, c, vy + 27, "Flask", String.format(Locale.ROOT, "%.0f%%", 100 * (dev.vestige.player.FlaskRules.healFraction(
+                player.getData(PlayerModule.FLASK).kindling()) + s.flaskHealBonus)), EMBER);
+        int ay = vy + 40;
         var inv = player.getData(EquipmentModule.RPG_INVENTORY);
-        ItemStack main = inv.get(EquipSlot.MAIN).isEmpty() ? player.getMainHandItem() : inv.get(EquipSlot.MAIN);
-        label(g, "Attack", c3, y, PARCH_DIM);
+        ItemStack main = dev.vestige.equipment.Stance.main(player, inv);
         var w = WeaponProfiles.of(main, true);
+        label(g, "Attack", c, ay, PARCH_DIM);
         if (w.isPresent()) {
             DamageSpread ar = PlayerAttack.spread(player, w.get(), null);
-            int row = 0;
+            int r = 0;
             for (DamageType t : DamageType.all()) {
-                if (ar.get(t) > 0 && row < 3) {
-                    label(g, String.format(Locale.ROOT, "%s %.0f", EquipmentTooltips.name(t), ar.get(t)), c3, y + 9 + row * 9, t.color);
-                    row++;
+                if (ar.get(t) > 0 && r < 3) {
+                    row(g, c + 6, ay + 9 + r * 9, EquipmentTooltips.name(t), String.format(Locale.ROOT, "%.0f", ar.get(t)), t.color);
+                    r++;
                 }
             }
         } else {
-            label(g, "-", c3, y + 9, MUTED);
+            label(g, "unarmed", c + 6, ay + 9, MUTED);
         }
-        // Column 4: absorption per type.
-        int c4 = x0 + 214;
-        label(g, "Absorption", c4, y, PARCH_DIM);
-        int row = 0;
+        // Bottom left: absorption per type.
+        int bx = x0 + 8, by = y0 + 145;
+        label(g, "Absorption", bx, by, PARCH_DIM);
+        int r = 0;
         for (DamageType t : DamageType.all()) {
             if (t == DamageType.STRIKE || t == DamageType.PIERCE) {
-                continue; // physical shown once, as Slash
+                continue; // physical is one number
             }
-            String n = t == DamageType.SLASH ? "Phy" : EquipmentTooltips.name(t).substring(0, 3);
-            label(g, String.format(Locale.ROOT, "%s %d%%", n, Math.round(s.absorption.get(t) * 100)), c4 + (row % 2) * 44, y + 9 + (row / 2) * 9, t.color);
-            row++;
+            String n = t == DamageType.SLASH ? "Phys" : EquipmentTooltips.name(t);
+            n = n.length() > 4 ? n.substring(0, 4) : n;
+            int cx = bx + (r % 2) * 48, cy = by + 11 + (r / 2) * 9;
+            label(g, n, cx, cy, t == DamageType.SLASH ? PARCH : t.color);
+            String v = Math.round(s.absorption.get(t) * 100) + "%";
+            label(g, v, cx + 44 - font.width(v), cy, PARCH);
+            r++;
         }
-        // Set bonus line.
-        List<String> sets = new ArrayList<>();
-        s.sets.forEach((id, n) -> EquipmentData.set(id, true).ifPresent(set -> sets.add(set.name() + " (" + n + "/4)" + (n >= 4 ? ": " + set.fourText()
-                : n >= 2 ? ": " + set.twoText() : ""))));
-        if (!sets.isEmpty()) {
-            label(g, "SET  " + sets.get(0), x0 + 8, y + 40 - 2, EMBER);
+        label(g, "Status res.", bx, by + 51, PARCH_DIM);
+        String sr = Math.round(s.statusResist * 100) + "%";
+        label(g, sr, bx + 92 - font.width(sr), by + 51, PARCH);
+        label(g, "Defense", bx, by + 60, PARCH_DIM);
+        String df = String.format(Locale.ROOT, "%.1f", s.defense.get(DamageType.SLASH));
+        label(g, df, bx + 92 - font.width(df), by + 60, PARCH);
+        // Bottom right: set bonuses (wrapped).
+        int sx = x0 + 280, sy = y0 + 145;
+        label(g, "Set bonuses", sx, sy, PARCH_DIM);
+        int ly = sy + 11;
+        if (s.sets.isEmpty()) {
+            label(g, "none", sx, ly, MUTED);
         }
+        for (var e : s.sets.entrySet()) {
+            var set = EquipmentData.set(e.getKey(), true);
+            if (set.isEmpty() || ly > y0 + 212) {
+                continue;
+            }
+            int n = e.getValue();
+            label(g, set.get().name() + " " + n + "/4", sx, ly, n >= 2 ? EMBER : PARCH);
+            ly += 9;
+            String text = n >= 4 ? set.get().fourText() : n >= 2 ? set.get().twoText() : "2 pieces: " + set.get().twoText();
+            for (FormattedCharSequence line : font.split(Component.literal(text), 96)) {
+                if (ly > y0 + 212) {
+                    break;
+                }
+                g.drawString(font, line, sx, ly, n >= 2 ? PARCH : MUTED, false);
+                ly += 9;
+            }
+        }
+    }
+
+    private void row(GuiGraphics g, int x, int y, String name, String value, int color) {
+        label(g, name, x, y, PARCH_DIM);
+        label(g, value, x + 96 - font.width(value), y, color);
     }
 
     @Override

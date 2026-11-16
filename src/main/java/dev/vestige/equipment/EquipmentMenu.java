@@ -26,15 +26,15 @@ public class EquipmentMenu extends AbstractContainerMenu {
             () -> new MenuType<>(EquipmentMenu::new, FeatureFlags.DEFAULT_FLAGS));
 
     /** Screen layout (shared with the client screen). Tile = 20 px, slot = tile + 2. */
-    public static final int WIDTH = 304, HEIGHT = 246;
+    public static final int WIDTH = 384, HEIGHT = 224;
     public static final int[][] RPG_POS = {
-            {190, 62}, {94, 62},             // MAIN (right of the doll), SECONDARY (left)
-            {224, 26}, {246, 26},            // rings
-            {224, 64}, {246, 64},            // talismans
-            {214, 102}, {236, 102}, {258, 102}, {280, 102} // relics
+            {170, 67}, {74, 67},             // MAIN (right of the doll), SECONDARY (left): large tiles
+            {214, 26}, {236, 26},            // rings
+            {214, 60}, {236, 60},            // talismans
+            {214, 94}, {236, 94}, {214, 116}, {236, 116} // relics (2x2)
     };
-    public static final int[][] ARMOR_POS = {{14, 18}, {14, 42}, {14, 66}, {14, 90}};
-    public static final int INV_X = 71, INV_Y = 164, HOTBAR_Y = 222;
+    public static final int[][] ARMOR_POS = {{12, 26}, {12, 48}, {12, 70}, {12, 92}};
+    public static final int INV_X = 111, INV_Y = 144, HOTBAR_Y = 202;
     public static final EquipmentSlot[] ARMOR_SLOTS = {EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET};
     public static final int RPG_START = 0, ARMOR_START = RpgInventory.SIZE, INV_START = ARMOR_START + 4, INV_END = INV_START + 36;
 

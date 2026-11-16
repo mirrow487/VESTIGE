@@ -52,6 +52,14 @@ public final class EquipmentClient {
         modBus.addListener((RegisterMenuScreensEvent e) -> e.register(EquipmentMenu.TYPE.get(), EquipmentScreen::new));
         gameBus.addListener(EquipmentClient::onTick);
         gameBus.addListener(EquipmentTooltips::onTooltip);
+        gameBus.addListener(EquipmentClient::onRenderArm);
+        // The equipment and attunement screens are full-screen: no HUD shows through them.
+        gameBus.addListener((net.neoforged.neoforge.client.event.RenderGuiLayerEvent.Pre e) -> {
+            var screen = Minecraft.getInstance().screen;
+            if (screen instanceof EquipmentScreen || screen instanceof AttuneScreen) {
+                e.setCanceled(true);
+            }
+        });
     }
 
     private static GeoRenderProvider armorProvider(String set) {
@@ -67,6 +75,58 @@ public final class EquipmentClient {
                 return renderer;
             }
         };
+    }
+
+    /** A set's armor renderer that, for the first-person arm, shows only that arm's bone. */
+    static final class ArmRenderer extends GeoArmorRenderer<VestigeArmorItem> {
+        net.minecraft.world.entity.HumanoidArm arm;
+
+        ArmRenderer(String set) {
+            super(new DefaultedItemGeoModel<>(VestigeIds.id("armor/" + set)));
+        }
+
+        @Override
+        protected void applyBoneVisibilityBySlot(EquipmentSlot slot) {
+            setAllVisible(false);
+            if (arm == net.minecraft.world.entity.HumanoidArm.RIGHT) {
+                setBoneVisible(rightArm, true);
+            } else {
+                setBoneVisible(leftArm, true);
+            }
+        }
+    }
+
+    private static final java.util.Map<String, ArmRenderer> ARM_RENDERERS = new java.util.HashMap<>();
+    /** For the driver: first-person armor sleeves drawn. */
+    public static volatile int sleevesDrawn;
+
+    /**
+     * Vanilla draws only skin and sleeve on the first-person arm; VESTIGE chest armor also covers it,
+     * so the arm in first person matches the third-person model (GDD §9.1).
+     */
+    private static void onRenderArm(net.neoforged.neoforge.client.event.RenderArmEvent event) {
+        var player = event.getPlayer();
+        ItemStack chest = player.getItemBySlot(EquipmentSlot.CHEST);
+        if (!(chest.getItem() instanceof VestigeArmorItem armor)) {
+            return;
+        }
+        Minecraft mc = Minecraft.getInstance();
+        if (!(mc.getEntityRenderDispatcher().getRenderer(player) instanceof net.minecraft.client.renderer.entity.player.PlayerRenderer pr)) {
+            return;
+        }
+        var model = pr.getModel();
+        model.attackTime = 0f;
+        model.crouching = false;
+        model.swimAmount = 0f;
+        model.setupAnim(player, 0f, 0f, 0f, 0f, 0f);
+        (event.getArm() == net.minecraft.world.entity.HumanoidArm.RIGHT ? model.rightArm : model.leftArm).xRot = 0f;
+        ArmRenderer r = ARM_RENDERERS.computeIfAbsent(armor.set(), ArmRenderer::new);
+        r.arm = event.getArm();
+        r.prepForRender(player, chest, EquipmentSlot.CHEST, model, event.getMultiBufferSource(),
+                mc.getTimer().getGameTimeDeltaPartialTick(false), 0f, 0f, 0f, 0f);
+        r.renderToBuffer(event.getPoseStack(), null, event.getPackedLight(), net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY,
+                0xFFFFFFFF);
+        sleevesDrawn++;
     }
 
     private static void send(int action) {

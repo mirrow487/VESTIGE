@@ -46,11 +46,28 @@ neoForge {
                 systemProperty 'vestige.dev.driver', project.property('driver').toString()
                 programArguments.addAll('--width', '1280', '--height', '720')
             }
+            // Multiplayer: ./gradlew runClient -PquickPlayServer=localhost -Pdriver=mp_a
+            if (project.hasProperty('quickPlayServer')) {
+                programArguments.addAll('--quickPlayMultiplayer', project.property('quickPlayServer').toString())
+            }
+        }
+        // A second client for multiplayer tests (scripts/multiplayer-test.sh): its own game directory and name.
+        client2 {
+            client()
+            gameDirectory = project.file('runs/client2')
+            programArguments.addAll('--username', 'Dev2')
+            if (project.hasProperty('driver2')) {
+                systemProperty 'vestige.dev.driver', project.property('driver2').toString()
+                programArguments.addAll('--width', '1280', '--height', '720')
+            }
+            if (project.hasProperty('quickPlayServer')) {
+                programArguments.addAll('--quickPlayMultiplayer', project.property('quickPlayServer').toString())
+            }
         }
         server {
             server()
             programArgument '--nogui'
-            gameDirectory = project.file('runs/server')
+            gameDirectory = project.file(project.findProperty('serverDir') ?: 'runs/server')
             // Smoke test: ./gradlew runServer -Psmoke  (server stops itself after startup checks)
             if (project.hasProperty('smoke')) {
                 systemProperty 'vestige.dev.autostop', 'true'

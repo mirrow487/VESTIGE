@@ -66,6 +66,12 @@ public final class EquipmentTooltips {
         }
         ItemStack stack = event.getItemStack();
         List<Component> lines = event.getToolTip();
+        if (stack.getItem() instanceof dev.vestige.equipment.VestigeArmorItem) {
+            // VESTIGE armor has no vanilla armor points: drop vanilla's empty "When on Body:" block.
+            lines.removeIf(c -> c.getContents() instanceof net.minecraft.network.chat.contents.TranslatableContents t
+                    && t.getKey().startsWith("item.modifiers."));
+            lines.removeIf(c -> c.getString().isEmpty());
+        }
         var weapon = WeaponProfiles.of(stack, true);
         if (weapon.isPresent()) {
             weapon(lines, player, stack, weapon.get());

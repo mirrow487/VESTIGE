@@ -61,6 +61,12 @@ public final class DevDriver {
             buildAnimScenario();
         } else if (scenario.equals("depth")) {
             buildDepthScenario();
+        } else if (scenario.equals("mp_a")) {
+            buildMultiplayerA();
+        } else if (scenario.equals("mp_b")) {
+            buildMultiplayerB();
+        } else if (scenario.equals("equipment")) {
+            buildEquipmentScenario();
         } else if (scenario.equals("rpg")) {
             buildRpgScenario();
         } else if (scenario.equals("arsenal")) {
@@ -924,6 +930,430 @@ public final class DevDriver {
             VestigeIds.LOG.info("DRIVER DONE checks={} failures={} {}", checks, FAILURES.size(), FAILURES);
             quitSoon = 40;
         });
+    }
+
+    // ------------------------------------------------------------------ equipment (Milestone 5)
+
+    private static dev.vestige.equipment.RpgInventory rpg() {
+        return mc().player.getData(dev.vestige.equipment.EquipmentModule.RPG_INVENTORY);
+    }
+
+    private static dev.vestige.stats.StatSheet sheet() {
+        return dev.vestige.stats.Stats.of(mc().player);
+    }
+
+    /** Moves the real cursor (GUI coordinates), so hover tooltips render exactly as for a player. */
+    private static void hover(java.util.function.IntSupplier gx, java.util.function.IntSupplier gy) {
+        run(() -> {
+            try {
+                double scale = mc().getWindow().getGuiScale();
+                var mh = mc().mouseHandler;
+                var fx = mh.getClass().getDeclaredField("xpos");
+                var fy = mh.getClass().getDeclaredField("ypos");
+                fx.setAccessible(true);
+                fy.setAccessible(true);
+                fx.setDouble(mh, gx.getAsInt() * scale);
+                fy.setDouble(mh, gy.getAsInt() * scale);
+            } catch (ReflectiveOperationException e) {
+                fail("hover", e.toString());
+            }
+        });
+        wait(3);
+    }
+
+    /** Shift-clicks every inventory stack of the open equipment menu, as a player would (server routes it). */
+    private static void shiftClickAll(java.util.function.Predicate<net.minecraft.world.item.ItemStack> which) {
+        run(() -> {
+            var menu = mc().player.containerMenu;
+            for (int i = dev.vestige.equipment.EquipmentMenu.INV_START; i < dev.vestige.equipment.EquipmentMenu.INV_END; i++) {
+                var stack = menu.slots.get(i).getItem();
+                if (!stack.isEmpty() && which.test(stack)) {
+                    mc().gameMode.handleInventoryMouseClick(menu.containerId, i, 0, net.minecraft.world.inventory.ClickType.QUICK_MOVE, mc().player);
+                }
+            }
+        });
+        wait(6);
+    }
+
+    private static void openEquipment() {
+        run(() -> net.neoforged.neoforge.network.PacketDistributor.sendToServer(
+                new dev.vestige.equipment.EquipmentNetwork.Act(dev.vestige.equipment.EquipmentNetwork.Act.OPEN_EQUIPMENT)));
+        run(() -> mc().getToasts().clear());
+        waitUntil("equipment screen opens", 60, () -> dev.vestige.client.equipment.EquipmentScreen.current != null);
+        wait(12); // fade-in
+    }
+
+    private static void closeScreen() {
+        run(() -> {
+            if (mc().screen != null) {
+                mc().screen.onClose();
+            }
+        });
+        wait(4);
+    }
+
+    private static void wearSet(String set) {
+        onServerPlayer(sp -> {
+            String[][] pieces = {
+                {"wanderer_hood", "wanderer_coat", "wanderer_trousers", "wanderer_boots"},
+                {"bellbronze_helm", "bellbronze_mail", "bellbronze_tassets", "bellbronze_sabatons"},
+                {"wickiron_helm", "wickiron_plate", "wickiron_cuisses", "wickiron_greaves"}};
+            int idx = set.equals("wanderer") ? 0 : set.equals("bellbronze") ? 1 : 2;
+            net.minecraft.world.entity.EquipmentSlot[] slots = {net.minecraft.world.entity.EquipmentSlot.HEAD,
+                net.minecraft.world.entity.EquipmentSlot.CHEST, net.minecraft.world.entity.EquipmentSlot.LEGS,
+                net.minecraft.world.entity.EquipmentSlot.FEET};
+            for (int i = 0; i < 4; i++) {
+                var item = net.minecraft.core.registries.BuiltInRegistries.ITEM.get(VestigeIds.id(pieces[idx][i]));
+                sp.setItemSlot(slots[i], new net.minecraft.world.item.ItemStack(item));
+            }
+        });
+        wait(6);
+    }
+
+    /**
+     * Milestone 5 in the real client: the equipment screen (empty, filled by real shift-clicks,
+     * tooltips with comparisons, the doll turned), stats reacting at once, the three armor sets in
+     * third and first person, combat stance and the HUD Readiness Cross, relics (Pale Hook,
+     * Windsail glide), statuses on the HUD, Attunement and Kindling at a Waylight.
+     */
+    private static void buildEquipmentScenario() {
+        setup();
+        command("difficulty peaceful");
+        command("gamerule keepInventory true");
+        float[] mem = new float[8];
+        // A starting kit, as loot would give it.
+        for (String id : new String[] {"keepsake_blade", "hand_maul", "wanderer_hood", "wanderer_coat", "wanderer_trousers", "wanderer_boots",
+            "ring_of_quick_breath", "harts_ring", "talisman_of_the_grove", "pale_hook", "windsail_cape", "plank_buckler", "wickiron_greatblade"}) {
+            command("give @p vestige:" + id);
+        }
+        selectSlot0();
+        run(() -> mem[0] = mc().player.getMaxHealth());
+        run(() -> mem[1] = sheet().absorption.get(dev.vestige.stats.DamageType.SLASH));
+        openEquipment();
+        shot("e_01_screen_empty");
+        check("equipment screen open", () -> dev.vestige.client.equipment.EquipmentScreen.current != null, "no screen");
+        // Hover the keepsake blade in the inventory: a weapon tooltip with AR per type, scaling, requirements.
+        hover(() -> slotX(dev.vestige.equipment.EquipmentMenu.INV_START + 27), () -> slotY(dev.vestige.equipment.EquipmentMenu.INV_START + 27));
+        shot("e_02_tooltip_weapon");
+        // Equip everything with real shift-clicks (the greatblade stays: one Main weapon).
+        shiftClickAll(st -> !st.is(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(VestigeIds.id("wickiron_greatblade")))
+                && !st.is(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(VestigeIds.id("hand_maul"))));
+        hover(() -> 0, () -> 0);
+        shot("e_03_screen_equipped");
+        check("armor equipped by shift-click", () -> !mc().player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST).isEmpty(),
+                "no chest piece");
+        check("main weapon equipped", () -> !rpg().get(dev.vestige.equipment.EquipSlot.MAIN).isEmpty(), "main slot empty");
+        check("buckler routed to the secondary slot", () -> !rpg().get(dev.vestige.equipment.EquipSlot.SECONDARY).isEmpty(), "secondary empty");
+        check("rings equipped", () -> !rpg().get(dev.vestige.equipment.EquipSlot.RING_1).isEmpty()
+                && !rpg().get(dev.vestige.equipment.EquipSlot.RING_2).isEmpty(), "rings missing");
+        check("relics equipped", () -> !rpg().get(dev.vestige.equipment.EquipSlot.RELIC_1).isEmpty()
+                && !rpg().get(dev.vestige.equipment.EquipSlot.RELIC_2).isEmpty(), "relics missing");
+        check("stats updated at once (absorption)", () -> sheet().absorption.get(dev.vestige.stats.DamageType.SLASH) > mem[1] + 0.05f,
+                () -> mem[1] + " -> " + sheet().absorption.get(dev.vestige.stats.DamageType.SLASH));
+        check("wanderer set bonus active", () -> sheet().sets.getOrDefault("vestige:wanderer", 0) == 4, () -> "sets " + sheet().sets);
+        check("ring perk active", () -> sheet().has(dev.vestige.stats.Perks.HARTS_RING), () -> "perks " + sheet().perks);
+        // Comparison tooltip: hover the hand maul while the blade is the Main weapon.
+        run(() -> {
+            var menu = mc().player.containerMenu;
+            for (int i = dev.vestige.equipment.EquipmentMenu.INV_START; i < dev.vestige.equipment.EquipmentMenu.INV_END; i++) {
+                if (menu.slots.get(i).getItem().is(net.minecraft.core.registries.BuiltInRegistries.ITEM.get(VestigeIds.id("hand_maul")))) {
+                    hoverSlot = i;
+                }
+            }
+        });
+        hover(() -> slotX(hoverSlot), () -> slotY(hoverSlot));
+        shot("e_04_tooltip_compare");
+        hover(() -> slotX(dev.vestige.equipment.EquipmentMenu.ARMOR_START + 1), () -> slotY(dev.vestige.equipment.EquipmentMenu.ARMOR_START + 1));
+        shot("e_05_tooltip_armor_set");
+        hover(() -> slotX(dev.vestige.equipment.EquipSlot.RING_2.ordinal()), () -> slotY(dev.vestige.equipment.EquipSlot.RING_2.ordinal()));
+        shot("e_06_tooltip_ring");
+        hover(() -> slotX(dev.vestige.equipment.EquipSlot.RELIC_3.ordinal()), () -> slotY(dev.vestige.equipment.EquipSlot.RELIC_3.ordinal()));
+        shot("e_07_tooltip_locked_slot");
+        hover(() -> 0, () -> 0);
+        run(() -> dev.vestige.client.equipment.EquipmentScreen.current.rotateDoll(140f));
+        wait(4);
+        shot("e_08_doll_turned");
+        // Overburdened: the greatblade into Main (via the server menu), then back.
+        closeScreen();
+        // Armor sets on the player, third person front/back and first person.
+        for (String set : new String[] {"wanderer", "bellbronze", "wickiron"}) {
+            wearSet(set);
+            recenter();
+            camera(CameraType.THIRD_PERSON_FRONT);
+            wait(10);
+            shot("a_" + set + "_front");
+            camera(CameraType.THIRD_PERSON_BACK);
+            shot("a_" + set + "_back");
+            sideCamera(-2.6, 0.2, -90f);
+            shot("a_" + set + "_side");
+            playerCamera();
+            camera(CameraType.FIRST_PERSON);
+            shot("a_" + set + "_first_person");
+        }
+        check("first-person armor sleeve drawn", () -> dev.vestige.client.equipment.EquipmentClient.sleevesDrawn > 0, "no sleeve");
+        check("wickiron set counted", () -> sheet().sets.getOrDefault("vestige:wickiron", 0) == 4, () -> "sets " + sheet().sets);
+        check("heavy armor raises the burden", () -> sheet().burden != dev.vestige.stats.Burden.LIGHT, () -> "burden " + sheet().burden);
+        // Combat stance: V moves the Main/Secondary into the hands; the HUD cross lights.
+        run(() -> mem[2] = (float) mc().player.getInventory().selected);
+        run(() -> net.neoforged.neoforge.network.PacketDistributor.sendToServer(
+                new dev.vestige.equipment.EquipmentNetwork.Act(dev.vestige.equipment.EquipmentNetwork.Act.STANCE)));
+        waitUntil("stance entered", 40, () -> rpg().inStance());
+        wait(4);
+        check("stance put the main weapon in hand", () -> dev.vestige.weapon.WeaponProfiles.of(mc().player.getMainHandItem(), true).isPresent(),
+                () -> "hand " + mc().player.getMainHandItem());
+        check("stance put the buckler in the off-hand", () -> !mc().player.getOffhandItem().isEmpty(), "off-hand empty");
+        shot("s_01_stance_first_person_hud");
+        camera(CameraType.THIRD_PERSON_FRONT);
+        shot("s_02_stance_third_person");
+        check("hud cross rendered", () -> dev.vestige.client.rpg.RpgHud.rendered, "no HUD");
+        run(() -> net.neoforged.neoforge.network.PacketDistributor.sendToServer(
+                new dev.vestige.equipment.EquipmentNetwork.Act(dev.vestige.equipment.EquipmentNetwork.Act.STANCE)));
+        waitUntil("stance left", 40, () -> !rpg().inStance());
+        check("leaving stance restored the slots", () -> !rpg().get(dev.vestige.equipment.EquipSlot.MAIN).isEmpty(), "main lost");
+        // Relics: the Pale Hook pulls the player to a pillar ahead.
+        camera(CameraType.FIRST_PERSON);
+        recenter();
+        command("execute at @p run fill ~-1 ~ ~9 ~1 ~4 ~9 minecraft:deepslate_bricks");
+        command("execute at @p run tp @p ~ ~ ~ 0 0");
+        run(() -> mem[3] = (float) mc().player.getZ());
+        run(() -> net.neoforged.neoforge.network.PacketDistributor.sendToServer(
+                new dev.vestige.equipment.EquipmentNetwork.Act(dev.vestige.equipment.EquipmentNetwork.Act.USE_RELIC)));
+        wait(5);
+        shot("r_01_pale_hook_pull");
+        wait(20);
+        check("pale hook pulled the player", () -> mc().player.getZ() > mem[3] + 3f, () -> mem[3] + " -> " + mc().player.getZ());
+        command("execute at @p run fill ~-1 ~ ~-1 ~1 ~4 ~3 minecraft:air");
+        // Windsail: cycle to it, then fall holding jump.
+        run(() -> net.neoforged.neoforge.network.PacketDistributor.sendToServer(
+                new dev.vestige.equipment.EquipmentNetwork.Act(dev.vestige.equipment.EquipmentNetwork.Act.CYCLE_RELIC)));
+        wait(4);
+        check("relic cycled", () -> rpg().activeRelic() == 1, () -> "active " + rpg().activeRelic());
+        recenter();
+        command("execute at @p run tp @p ~ ~14 ~");
+        run(() -> mc().options.keyJump.setDown(true));
+        wait(14);
+        camera(CameraType.THIRD_PERSON_BACK);
+        check("windsail glide engaged", () -> dev.vestige.client.equipment.EquipmentClient.gliding, () -> "vy " + mc().player.getDeltaMovement().y);
+        shot("r_02_windsail_glide");
+        waitUntil("landed", 200, () -> mc().player.onGround());
+        run(() -> mc().options.keyJump.setDown(false));
+        // Statuses on the HUD: a Scorch build-up and an active Hushed.
+        camera(CameraType.FIRST_PERSON);
+        onServerPlayer(sp -> {
+            dev.vestige.combat.status.StatusService.build(sp, dev.vestige.stats.StatusType.SCORCH, 60f, null);
+            dev.vestige.combat.status.StatusService.build(sp, dev.vestige.stats.StatusType.HUSHED, 150f, null);
+            dev.vestige.combat.status.StatusService.build(sp, dev.vestige.stats.StatusType.REND, 35f, null);
+        });
+        wait(4);
+        shot("h_01_status_hud");
+        check("hushed synced to the client", () -> dev.vestige.combat.status.StatusService.active(mc().player, dev.vestige.stats.StatusType.HUSHED),
+                "not hushed");
+        // Attunement and Kindling at a Waylight.
+        recenter();
+        run(() -> waylightA = net.minecraft.core.BlockPos.containing(arenaCenter.x + 2, arenaCenter.y, arenaCenter.z + 3));
+        run(() -> {
+            var a = waylightA;
+            var server = mc().getSingleplayerServer();
+            server.execute(() -> server.overworld().setBlock(a, dev.vestige.waylight.WaylightModule.WAYLIGHT.get().defaultBlockState(), 3));
+        });
+        onServerPlayer(sp -> {
+            dev.vestige.player.GlimService.set(sp, 6000);
+            sp.getInventory().add(new net.minecraft.world.item.ItemStack(dev.vestige.equipment.EquipmentItems.KINDLING_EMBER.get()));
+        });
+        run(() -> mem[4] = mc().player.getMaxHealth());
+        useBlock(() -> waylightA); // lights it
+        wait(30);
+        useBlock(() -> waylightA);
+        waitUntil("waylight menu", 40, () -> dev.vestige.client.rpg.WaylightScreen.current != null);
+        shot("k_01_waylight_menu_attune_kindle");
+        run(() -> dev.vestige.client.rpg.WaylightScreen.current.showAttune());
+        waitUntil("attune screen", 20, () -> dev.vestige.client.equipment.AttuneScreen.current != null);
+        run(() -> {
+            var s = dev.vestige.client.equipment.AttuneScreen.current;
+            for (int i = 0; i < 3; i++) {
+                s.plan(dev.vestige.stats.Attribute.VITALITY, 1);
+            }
+            s.plan(dev.vestige.stats.Attribute.STRENGTH, 1);
+            s.plan(dev.vestige.stats.Attribute.LAMPLIGHT, 1);
+        });
+        wait(4);
+        shot("k_02_attune_planned");
+        run(() -> dev.vestige.client.equipment.AttuneScreen.current.confirm());
+        waitUntil("attuned", 40, () -> mc().player.getData(dev.vestige.equipment.EquipmentModule.ATTRIBUTES).level() == 6);
+        wait(4);
+        shot("k_03_attune_done");
+        check("attunement raised the level", () -> mc().player.getData(dev.vestige.equipment.EquipmentModule.ATTRIBUTES).level() == 6,
+                () -> "level " + mc().player.getData(dev.vestige.equipment.EquipmentModule.ATTRIBUTES).level());
+        check("attunement spent glim", () -> mc().player.getData(dev.vestige.player.PlayerModule.GLIM).amount()
+                == 6000 - dev.vestige.equipment.Attunement.cost(1, 5), () -> "glim " + mc().player.getData(dev.vestige.player.PlayerModule.GLIM).amount());
+        check("vitality raised max health at once", () -> mc().player.getMaxHealth() > mem[4] + 10f,
+                () -> mem[4] + " -> " + mc().player.getMaxHealth());
+        run(() -> dev.vestige.client.equipment.AttuneScreen.current.onClose());
+        waitUntil("back on the waylight menu", 20, () -> dev.vestige.client.rpg.WaylightScreen.current != null);
+        run(() -> dev.vestige.client.rpg.WaylightScreen.current.kindle());
+        waitUntil("kindled", 40, () -> flask().kindling() == 1);
+        check("kindling raised the flask", () -> flask().kindling() == 1, () -> "kindling " + flask().kindling());
+        openEquipment();
+        shot("e_09_screen_after_attune");
+        closeScreen();
+        run(() -> {
+            VestigeIds.LOG.info("DRIVER DONE checks={} failures={} {}", checks, FAILURES.size(), FAILURES);
+            quitSoon = 40;
+        });
+    }
+
+    // ------------------------------------------------------------------ multiplayer (dedicated server, two clients)
+
+    /** A chat command, as typed by an operator on a dedicated server. */
+    private static void chat(String cmd) {
+        run(() -> mc().player.connection.sendCommand(cmd));
+        wait(4);
+    }
+
+    private static net.minecraft.world.entity.player.Player otherPlayer() {
+        for (var p : mc().level.players()) {
+            if (p != mc().player) {
+                return p;
+            }
+        }
+        return null;
+    }
+
+    /** Turns the local player (client-authoritative look) toward the other player's body. */
+    private static void lookAtOther(double height) {
+        run(() -> {
+            var o = otherPlayer();
+            if (o == null) {
+                return;
+            }
+            var p = mc().player;
+            double dx = o.getX() - p.getX(), dz = o.getZ() - p.getZ(), dy = o.getY() + height - p.getEyeY();
+            float yaw = (float) (Math.toDegrees(Math.atan2(dz, dx)) - 90.0);
+            float pitch = (float) -Math.toDegrees(Math.atan2(dy, Math.sqrt(dx * dx + dz * dz)));
+            p.setYRot(yaw);
+            p.setXRot(pitch);
+            p.yHeadRot = yaw;
+        });
+        wait(2);
+    }
+
+    private static void mpDone() {
+        run(() -> {
+            VestigeIds.LOG.info("DRIVER DONE checks={} failures={} {}", checks, FAILURES.size(), FAILURES);
+            quitSoon = 40;
+        });
+    }
+
+    /**
+     * Client A on a dedicated server: equips through the real menu, enters stance, cycles relics and
+     * tries a forged Attune packet (refused: no Waylight). Every result is read back from server sync.
+     */
+    private static void buildMultiplayerA() {
+        waitUntil("joined the server", 1200, () -> mc().player != null && mc().level != null && worldTicks > 80);
+        check("connected to a dedicated server", () -> !mc().hasSingleplayerServer() && mc().getConnection() != null, "not remote");
+        chat("gamemode survival");
+        chat("difficulty peaceful");
+        chat("time set day");
+        chat("clear");
+        chat("tp @s 0 200 0");
+        chat("fill -6 199 -6 6 199 6 minecraft:polished_andesite");
+        chat("fill -6 200 -6 6 204 6 minecraft:air");
+        chat("tp @s 0 200 0 0 0");
+        for (String id : new String[] {"keepsake_blade", "wanderer_hood", "wanderer_coat", "wanderer_trousers", "wanderer_boots",
+            "plank_buckler", "harts_ring", "pale_hook", "windsail_cape"}) {
+            chat("give @s vestige:" + id);
+        }
+        wait(20);
+        float[] mem = new float[4];
+        run(() -> mem[0] = sheet().absorption.get(dev.vestige.stats.DamageType.SLASH));
+        openEquipment();
+        shiftClickAll(st -> true);
+        wait(10);
+        shot("mp_a_01_equipment");
+        check("mp: armor equipped (server-synced)", () -> mc().player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST).is(
+                dev.vestige.equipment.EquipmentArmor.WANDERER_COAT.get()), () -> "chest " + mc().player.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST));
+        check("mp: rpg slots synced to the owner", () -> !rpg().get(dev.vestige.equipment.EquipSlot.MAIN).isEmpty()
+                && !rpg().get(dev.vestige.equipment.EquipSlot.RING_1).isEmpty(), "rpg slots empty on the client");
+        check("mp: stats recomputed on the client", () -> sheet().absorption.get(dev.vestige.stats.DamageType.SLASH) > mem[0] + 0.05f,
+                () -> "absorption " + sheet().absorption.get(dev.vestige.stats.DamageType.SLASH));
+        closeScreen();
+        // Forged packet: Attune with no Waylight near. The server must refuse.
+        run(() -> mem[1] = mc().player.getData(dev.vestige.equipment.EquipmentModule.ATTRIBUTES).level());
+        run(() -> net.neoforged.neoforge.network.PacketDistributor.sendToServer(new dev.vestige.equipment.EquipmentNetwork.Attune(
+                mc().player.blockPosition(), java.util.List.of(20, 20, 20, 20, 20, 20))));
+        wait(20);
+        check("mp: forged attune refused", () -> mc().player.getData(dev.vestige.equipment.EquipmentModule.ATTRIBUTES).level() == (int) mem[1],
+                () -> "level " + mc().player.getData(dev.vestige.equipment.EquipmentModule.ATTRIBUTES).level());
+        run(() -> net.neoforged.neoforge.network.PacketDistributor.sendToServer(
+                new dev.vestige.equipment.EquipmentNetwork.Act(dev.vestige.equipment.EquipmentNetwork.Act.CYCLE_RELIC)));
+        waitUntil("relic cycled", 40, () -> rpg().activeRelic() == 1);
+        check("mp: relic cycle round-trip", () -> rpg().activeRelic() == 1, () -> "active " + rpg().activeRelic());
+        run(() -> net.neoforged.neoforge.network.PacketDistributor.sendToServer(
+                new dev.vestige.equipment.EquipmentNetwork.Act(dev.vestige.equipment.EquipmentNetwork.Act.STANCE)));
+        waitUntil("stance entered", 40, () -> rpg().inStance());
+        check("mp: stance wields the main weapon", () -> mc().player.getMainHandItem().is(dev.vestige.weapon.WeaponModule.KEEPSAKE_BLADE.get()),
+                () -> "hand " + mc().player.getMainHandItem());
+        run(() -> VestigeIds.LOG.info("DRIVER MP A READY"));
+        camera(CameraType.THIRD_PERSON_FRONT);
+        shot("mp_a_02_stance_hud");
+        // Hold still while B looks; continue once B has left (or after 60 s).
+        waitUntil("second player arrives", 1800, () -> mc().getConnection().getOnlinePlayers().size() > 1);
+        waitUntil("second player leaves", 2400, () -> mc().getConnection().getOnlinePlayers().size() == 1);
+        run(() -> net.neoforged.neoforge.network.PacketDistributor.sendToServer(
+                new dev.vestige.equipment.EquipmentNetwork.Act(dev.vestige.equipment.EquipmentNetwork.Act.STANCE)));
+        waitUntil("stance left", 40, () -> !rpg().inStance());
+        check("mp: leaving stance restores the slots", () -> !rpg().get(dev.vestige.equipment.EquipSlot.MAIN).isEmpty()
+                && mc().player.getMainHandItem().isEmpty(), () -> "hand " + mc().player.getMainHandItem());
+        mpDone();
+    }
+
+    /** Client B: watches A's armor and stance weapon render, and confirms A's private slots are not sent to it. */
+    private static void buildMultiplayerB() {
+        waitUntil("joined the server", 1200, () -> mc().player != null && mc().level != null && worldTicks > 80);
+        chat("gamemode survival");
+        chat("execute at Dev run tp @s ^ ^ ^3.2");
+        chat("execute at @s run tp @s ~ ~ ~ facing entity Dev feet");
+        waitUntil("player A visible", 600, () -> otherPlayer() != null);
+        waitUntil("A armed and armored", 1200, () -> otherPlayer() != null
+                && otherPlayer().getItemBySlot(net.minecraft.world.entity.EquipmentSlot.CHEST).is(dev.vestige.equipment.EquipmentArmor.WANDERER_COAT.get())
+                && otherPlayer().getMainHandItem().is(dev.vestige.weapon.WeaponModule.KEEPSAKE_BLADE.get()));
+        lookAtOther(0.9);
+        wait(30);
+        check("mp: B sees A's armor", () -> otherPlayer() != null && otherPlayer().getItemBySlot(net.minecraft.world.entity.EquipmentSlot.HEAD)
+                .is(dev.vestige.equipment.EquipmentArmor.WANDERER_HOOD.get()), "no hood on A");
+        check("mp: B sees A's stance weapon and shield", () -> otherPlayer() != null
+                && otherPlayer().getMainHandItem().is(dev.vestige.weapon.WeaponModule.KEEPSAKE_BLADE.get())
+                && otherPlayer().getOffhandItem().is(dev.vestige.weapon.WeaponModule.PLANK_BUCKLER.get()), "A not armed");
+        check("mp: A's private slots are not sent to B", () -> otherPlayer() != null
+                && otherPlayer().getData(dev.vestige.equipment.EquipmentModule.RPG_INVENTORY).get(dev.vestige.equipment.EquipSlot.RING_1).isEmpty(),
+                "B received A's rings");
+        run(() -> {
+            mc().gui.getChat().clearMessages(false);
+            mc().getToasts().clear();
+        });
+        wait(2);
+        shot("mp_b_01_sees_a");
+        chat("execute at Dev run tp @s ^2.2 ^ ^1.6");
+        lookAtOther(0.9);
+        run(() -> {
+            mc().gui.getChat().clearMessages(false);
+            mc().getToasts().clear();
+        });
+        wait(20);
+        shot("mp_b_02_sees_a_angle");
+        mpDone();
+    }
+
+    private static int hoverSlot;
+
+    private static int slotX(int index) {
+        var screen = dev.vestige.client.equipment.EquipmentScreen.current;
+        return screen == null ? 0 : screen.getGuiLeft() + mc().player.containerMenu.slots.get(index).x + 8;
+    }
+
+    private static int slotY(int index) {
+        var screen = dev.vestige.client.equipment.EquipmentScreen.current;
+        return screen == null ? 0 : screen.getGuiTop() + mc().player.containerMenu.slots.get(index).y + 8;
     }
 
     /** Freezes an entity's mirrored action at a tick so a pose can be inspected (dev only). */
