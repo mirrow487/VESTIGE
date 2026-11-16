@@ -28,6 +28,8 @@ public final class EnglishLanguageProvider extends LanguageProvider {
         add("key.vestige.heavy", "Heavy Attack (hold to charge)");
         add("key.vestige.dodge", "Dodge Roll");
         add("key.vestige.lock_on", "Lock On");
+        add("key.vestige.art", "Weapon Art");
+        add("item.vestige.plank_buckler", "Plank Buckler");
         add("tooltip.vestige.weapon_class.blade", "Blade");
         add("tooltip.vestige.weapon_class.pike", "Pike");
         add("tooltip.vestige.weapon_class.maul", "Maul");

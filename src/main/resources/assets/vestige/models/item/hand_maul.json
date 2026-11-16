@@ -1,6 +1,21 @@
 {
-  "parent": "minecraft:item/handheld",
-  "textures": {
-    "layer0": "vestige:item/hand_maul"
+  "loader": "neoforge:separate_transforms",
+  "gui_light": "front",
+  "base": {
+    "parent": "vestige:item/hand_maul_3d"
+  },
+  "perspectives": {
+    "gui": {
+      "parent": "minecraft:item/handheld",
+      "textures": {
+        "layer0": "vestige:item/hand_maul"
+      }
+    },
+    "fixed": {
+      "parent": "minecraft:item/handheld",
+      "textures": {
+        "layer0": "vestige:item/hand_maul"
+      }
+    }
   }
 }

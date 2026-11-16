@@ -202,11 +202,12 @@ public final class LockOn {
         if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_PARTICLES) {
             return;
         }
+        float partial = event.getPartialTick().getGameTimeDeltaPartialTick(false);
+        renderRipostePrompt(event, partial);
         Optional<LivingEntity> t = target();
         if (t.isEmpty()) {
             return;
         }
-        float partial = event.getPartialTick().getGameTimeDeltaPartialTick(false);
         boolean danger = isDangerous(ClientActions.of(t.get()));
         Camera cam = event.getCamera();
         // Draw in front of the target (toward the camera) so its own model never hides the reticle.
@@ -227,6 +228,29 @@ public final class LockOn {
         quad(vc, ps.last(), size, r, g, b, 255);
         buffers.endBatch(type);
         ps.popPose();
+    }
+
+    /** Gold pulsing marker over an enemy that can be riposted or backstabbed right now. */
+    private static void renderRipostePrompt(RenderLevelStageEvent event, float partial) {
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player == null || !ClientCombat.armed()) {
+            return;
+        }
+        ClientCombat.riposteTarget(player).ifPresent(e -> {
+            Camera cam = event.getCamera();
+            Vec3 at = e.getPosition(partial).add(0, e.getBbHeight() + 0.45, 0).subtract(cam.getPosition());
+            PoseStack ps = event.getPoseStack();
+            ps.pushPose();
+            ps.translate(at.x, at.y, at.z);
+            ps.mulPose(cam.rotation());
+            float t = (Minecraft.getInstance().level.getGameTime() + partial) * 0.5f;
+            float size = 0.3f + 0.05f * Mth.sin(t);
+            MultiBufferSource.BufferSource buffers = Minecraft.getInstance().renderBuffers().bufferSource();
+            RenderType type = RenderType.entityTranslucentEmissive(RETICLE);
+            quad(buffers.getBuffer(type), ps.last(), size, 255, 200, 60, 255);
+            buffers.endBatch(type);
+            ps.popPose();
+        });
     }
 
     static boolean isDangerous(RunningAction action) {

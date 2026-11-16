@@ -201,8 +201,95 @@
       "motion": {
         "active": 0.12
       }
+    },
+    "riposte_stance": {
+      "timing": {
+        "windup": 2,
+        "active": 12,
+        "recovery": 10,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 0
+      },
+      "power": {
+        "stamina": 10,
+        "motion_value": 1.0,
+        "poise_damage": 0,
+        "damage": 0
+      },
+      "pose": "blade_riposte_stance",
+      "defense": {
+        "parry": {
+          "start": 1,
+          "end": 14
+        }
+      },
+      "art": {
+        "cost": 20,
+        "on_parry": "riposte_counter"
+      }
+    },
+    "riposte_counter": {
+      "timing": {
+        "windup": 2,
+        "active": 3,
+        "recovery": 12,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 6
+      },
+      "power": {
+        "stamina": 0,
+        "motion_value": 2.2,
+        "poise_damage": 30,
+        "damage": 0
+      },
+      "pose": "blade_counter",
+      "hit": {
+        "type": "arc",
+        "reach": 2.8,
+        "from": 60,
+        "to": -60,
+        "y_min": 0.0,
+        "y_max": 2.2
+      },
+      "motion": {
+        "active": 0.2
+      },
+      "art": {
+        "cost": 0
+      }
+    },
+    "riposte": {
+      "timing": {
+        "windup": 7,
+        "active": 3,
+        "recovery": 16,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 9
+      },
+      "power": {
+        "stamina": 0,
+        "motion_value": 3.0,
+        "poise_damage": 0,
+        "damage": 0
+      },
+      "pose": "blade_riposte",
+      "hit": {
+        "type": "thrust",
+        "reach": 2.8,
+        "radius": 0.6,
+        "y_min": 0.2,
+        "y_max": 2.0
+      },
+      "defense": {
+        "invulnerable": true
+      }
     }
   },
+  "art": "riposte_stance",
+  "riposte": "riposte",
   "light": [
     "light_1",
     "light_2",

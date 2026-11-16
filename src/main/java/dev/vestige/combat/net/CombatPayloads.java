@@ -67,15 +67,23 @@ public final class CombatPayloads {
         }
     }
 
-    /** S→C: a hit landed (hitstop, particles, camera shake, sound). */
-    public record HitFeedback(int attackerId, int targetId, float x, float y, float z, int hitstop, boolean heavy, boolean critical)
+    /** What kind of contact a {@link HitFeedback} reports. */
+    public enum HitKind { HIT, BLOCK, PARRY, GUARD_BREAK, RIPOSTE }
+
+    /** S→C: a hit landed, was blocked or was parried (hitstop, particles, camera shake, sound). */
+    public record HitFeedback(int attackerId, int targetId, float x, float y, float z, int hitstop, boolean heavy, boolean critical, int kind)
             implements CustomPacketPayload {
+        public HitKind hitKind() {
+            return HitKind.values()[Math.max(0, Math.min(HitKind.values().length - 1, kind))];
+        }
+
         public static final Type<HitFeedback> TYPE = new Type<>(VestigeIds.id("hit_feedback"));
         public static final StreamCodec<ByteBuf, HitFeedback> CODEC = new StreamCodec<>() {
             @Override
             public HitFeedback decode(ByteBuf buf) {
                 return new HitFeedback(ByteBufCodecs.VAR_INT.decode(buf), ByteBufCodecs.VAR_INT.decode(buf), buf.readFloat(),
-                        buf.readFloat(), buf.readFloat(), ByteBufCodecs.VAR_INT.decode(buf), buf.readBoolean(), buf.readBoolean());
+                        buf.readFloat(), buf.readFloat(), ByteBufCodecs.VAR_INT.decode(buf), buf.readBoolean(), buf.readBoolean(),
+                        ByteBufCodecs.VAR_INT.decode(buf));
             }
 
             @Override
@@ -88,6 +96,7 @@ public final class CombatPayloads {
                 ByteBufCodecs.VAR_INT.encode(buf, p.hitstop);
                 buf.writeBoolean(p.heavy);
                 buf.writeBoolean(p.critical);
+                ByteBufCodecs.VAR_INT.encode(buf, p.kind);
             }
         };
 

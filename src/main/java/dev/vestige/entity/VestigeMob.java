@@ -116,6 +116,15 @@ public abstract class VestigeMob extends Monster implements CombatTarget, Health
         return true;
     }
 
+    /** Apply profile stats as soon as the entity enters the world (so later changes, e.g. by tests or effects, stick). */
+    @Override
+    public void onAddedToLevel() {
+        super.onAddedToLevel();
+        if (!level().isClientSide() && !profileApplied) {
+            applyProfile();
+        }
+    }
+
     @Override
     public void aiStep() {
         super.aiStep();
@@ -165,9 +174,13 @@ public abstract class VestigeMob extends Monster implements CombatTarget, Health
         if (current.phase() == ActionPhase.ACTIVE) {
             for (Entity e : HitResolver.sweep(this, current, getYRot(), this::canHitWithAction)) {
                 if (e instanceof LivingEntity living) {
-                    CombatDamage.Outcome out = CombatDamage.apply(this, living, current, current.def.power().damage(), 1f, CombatDamageTypes.ENEMY_ATTACK);
-                    if (out.landed() && living instanceof ServerPlayer player) {
-                        PlayerCombat.onHitByAction(player, current);
+                    RunningAction attack = current;
+                    CombatDamage.Outcome out = CombatDamage.apply(this, living, attack, attack.def.power().damage(), 1f, 0f, CombatDamageTypes.ENEMY_ATTACK);
+                    if (out.landed() && living instanceof ServerPlayer player && out.defense() == dev.vestige.combat.player.PlayerDefense.Result.Kind.NONE) {
+                        PlayerCombat.onHitByAction(player, attack);
+                    }
+                    if (current != attack) {
+                        return; // parried: this action was replaced by the reel
                     }
                 }
             }
@@ -204,7 +217,7 @@ public abstract class VestigeMob extends Monster implements CombatTarget, Health
 
     private void finishAction() {
         String followUp = pendingFollowUp;
-        boolean wasReaction = current.ref.action().equals("flinch") || current.ref.action().equals("stagger");
+        boolean wasReaction = java.util.Set.of("flinch", "stagger", "parried", "riposted").contains(current.ref.action());
         current = null;
         pendingFollowUp = null;
         LivingEntity target = getTarget();
@@ -238,9 +251,44 @@ public abstract class VestigeMob extends Monster implements CombatTarget, Health
         return profile().map(EnemyProfile::defense).orElse(0f);
     }
 
+    private boolean playing(String action) {
+        return current != null && current.ref.action().equals(action);
+    }
+
+    @Override
+    public void receiveParry(LivingEntity parrier) {
+        interruptWith("parried");
+    }
+
+    @Override
+    public boolean isReeling() {
+        return playing("stagger") || playing("parried");
+    }
+
+    @Override
+    public boolean canBeCritical() {
+        return isAlive() && !playing("riposted");
+    }
+
+    @Override
+    public void beginCritical(LivingEntity attacker, int ticks) {
+        if (isReeling()) {
+            // Front riposte: turn to face the attacker so the critical animation lines up.
+            setYRot((float) (Mth.atan2(attacker.getZ() - getZ(), attacker.getX() - getX()) * Mth.RAD_TO_DEG) - 90f);
+        }
+        interruptWith("riposted");
+    }
+
+    @Override
+    public void forceStagger(int ticks) {
+        if (!playing("riposted")) {
+            interruptWith("stagger");
+        }
+    }
+
     @Override
     public void receivePoiseDamage(float amount, LivingEntity attacker) {
-        if (isStaggered()) {
+        if (isStaggered() || playing("parried") || playing("riposted")) {
             return;
         }
         lastPoiseHit = level().getGameTime();
@@ -257,7 +305,7 @@ public abstract class VestigeMob extends Monster implements CombatTarget, Health
 
     @Override
     public boolean isStaggered() {
-        return current != null && current.ref.action().equals("stagger");
+        return playing("stagger");
     }
 
     @Override
@@ -270,6 +318,18 @@ public abstract class VestigeMob extends Monster implements CombatTarget, Health
     @Override
     public boolean doHurtTarget(Entity target) {
         return false; // all damage goes through actions
+    }
+
+    /** Ticks a corpse stays for its death animation before vanishing (vanilla: 20). */
+    public static final int CORPSE_TICKS = 32;
+
+    @Override
+    protected void tickDeath() {
+        ++deathTime;
+        if (deathTime >= CORPSE_TICKS && !level().isClientSide() && !isRemoved()) {
+            level().broadcastEntityEvent(this, (byte) 60); // vanilla death poof
+            remove(RemovalReason.KILLED);
+        }
     }
 
     @Override

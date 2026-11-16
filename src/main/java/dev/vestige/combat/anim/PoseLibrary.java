@@ -183,6 +183,126 @@ public final class PoseLibrary {
                 k(RECOVERY, 0.8f, Ease.LINEAR).set(TORSO_PITCH, 30).set(HEAD_PITCH, 28).set(RIGHT_ARM_PITCH, -22)
                         .set(LEFT_ARM_PITCH, -18).set(RIGHT_LEG_PITCH, -22).set(LEFT_LEG_PITCH, 12));
 
+        // ------------------------------------------------------------ guard, parry, arts, criticals (M4)
+        def("guard_weapon",
+                k(ACTIVE, 0f, Ease.OUTBACK).set(RIGHT_ARM_PITCH, -75).set(RIGHT_ARM_YAW, -35).set(RIGHT_ARM_ROLL, 10)
+                        .set(ITEM_ROLL, -65).set(LEFT_ARM_PITCH, -45).set(LEFT_ARM_YAW, 30).set(TORSO_PITCH, 10).set(HEAD_PITCH, -6)
+                        .set(RIGHT_LEG_PITCH, -16).set(LEFT_LEG_PITCH, 14),
+                k(ACTIVE, 1f, Ease.LINEAR).set(RIGHT_ARM_PITCH, -75).set(RIGHT_ARM_YAW, -35).set(RIGHT_ARM_ROLL, 10)
+                        .set(ITEM_ROLL, -65).set(LEFT_ARM_PITCH, -45).set(LEFT_ARM_YAW, 30).set(TORSO_PITCH, 10).set(HEAD_PITCH, -6)
+                        .set(RIGHT_LEG_PITCH, -16).set(LEFT_LEG_PITCH, 14));
+        def("guard_shield",
+                k(ACTIVE, 0f, Ease.OUTBACK).set(LEFT_ARM_PITCH, -62).set(LEFT_ARM_YAW, 32).set(RIGHT_ARM_PITCH, -28)
+                        .set(RIGHT_ARM_YAW, 10).set(TORSO_PITCH, 12).set(TORSO_YAW, -8).set(HEAD_PITCH, -8)
+                        .set(RIGHT_LEG_PITCH, 14).set(LEFT_LEG_PITCH, -18),
+                k(ACTIVE, 1f, Ease.LINEAR).set(LEFT_ARM_PITCH, -62).set(LEFT_ARM_YAW, 32).set(RIGHT_ARM_PITCH, -28)
+                        .set(RIGHT_ARM_YAW, 10).set(TORSO_PITCH, 12).set(TORSO_YAW, -8).set(HEAD_PITCH, -8)
+                        .set(RIGHT_LEG_PITCH, 14).set(LEFT_LEG_PITCH, -18));
+        def("parry_buckler",
+                // Anticipation: a quick tuck, forearm bent in, shoulders coiling to the right.
+                k(WINDUP, 1f, Ease.OUTQUAD).set(LEFT_ARM_PITCH, -40).set(LEFT_ARM_YAW, 20).set(LEFT_ARM_BEND, 40)
+                        .set(TORSO_YAW, 12).set(TORSO_PITCH, 8).set(RIGHT_ARM_PITCH, -18).set(RIGHT_LEG_PITCH, 10).set(LEFT_LEG_PITCH, -14),
+                // Parry window: the buckler punches out across the chest, face forward, in view.
+                k(ACTIVE, 0.35f, Ease.OUTEXPO).set(LEFT_ARM_PITCH, -68).set(LEFT_ARM_YAW, 36).set(LEFT_ARM_BEND, 0)
+                        .set(TORSO_YAW, -14).set(TORSO_PITCH, 10).set(HEAD_PITCH, -4).set(RIGHT_ARM_PITCH, -30).set(RIGHT_ARM_YAW, -10)
+                        .set(RIGHT_LEG_PITCH, -14).set(LEFT_LEG_PITCH, 16),
+                k(ACTIVE, 1f, Ease.LINEAR).set(LEFT_ARM_PITCH, -70).set(LEFT_ARM_YAW, 32).set(TORSO_YAW, -16).set(TORSO_PITCH, 10)
+                        .set(RIGHT_ARM_PITCH, -30).set(RIGHT_ARM_YAW, -10).set(RIGHT_LEG_PITCH, -14).set(LEFT_LEG_PITCH, 16),
+                // Swat outward with overshoot, then settle back to a ready stance.
+                k(RECOVERY, 0.2f, Ease.OUTBACK).set(LEFT_ARM_PITCH, -82).set(LEFT_ARM_YAW, -16).set(LEFT_ARM_ROLL, -18)
+                        .set(TORSO_YAW, -24).set(TORSO_PITCH, 6).set(RIGHT_ARM_PITCH, -34).set(RIGHT_LEG_PITCH, -10).set(LEFT_LEG_PITCH, 12),
+                k(RECOVERY, 0.6f, Ease.INOUTSINE).set(LEFT_ARM_PITCH, -55).set(LEFT_ARM_YAW, 18).set(LEFT_ARM_BEND, 20)
+                        .set(TORSO_YAW, -6).set(TORSO_PITCH, 6).set(RIGHT_ARM_PITCH, -24));
+        def("guard_break",
+                k(RECOVERY, 0.12f, Ease.OUTEXPO).set(RIGHT_ARM_PITCH, -130).set(RIGHT_ARM_ROLL, 40).set(LEFT_ARM_PITCH, -125)
+                        .set(LEFT_ARM_ROLL, -40).set(TORSO_PITCH, -22).set(HEAD_PITCH, -28).set(RIGHT_LEG_PITCH, 20).set(LEFT_LEG_PITCH, -10),
+                k(RECOVERY, 0.45f, Ease.INOUTSINE).set(RIGHT_ARM_PITCH, -40).set(RIGHT_ARM_ROLL, 25).set(LEFT_ARM_PITCH, -35)
+                        .set(LEFT_ARM_ROLL, -25).set(TORSO_PITCH, 18).set(HEAD_PITCH, 20).set(RIGHT_LEG_PITCH, -15).set(LEFT_LEG_PITCH, 10),
+                k(RECOVERY, 0.75f, Ease.LINEAR).set(RIGHT_ARM_PITCH, -30).set(LEFT_ARM_PITCH, -28).set(TORSO_PITCH, 15).set(HEAD_PITCH, 15));
+        def("blade_riposte_stance",
+                k(ACTIVE, 0f, Ease.OUTBACK).set(RIGHT_ARM_PITCH, -100).set(RIGHT_ARM_YAW, -12).set(RIGHT_ARM_BEND, 25)
+                        .set(LEFT_ARM_PITCH, -85).set(LEFT_ARM_YAW, 28).set(TORSO_PITCH, 12).set(TORSO_YAW, 15).set(HEAD_PITCH, -4)
+                        .set(RIGHT_LEG_PITCH, -26).set(LEFT_LEG_PITCH, 24),
+                k(RECOVERY, 0f, Ease.LINEAR).set(RIGHT_ARM_PITCH, -100).set(RIGHT_ARM_YAW, -12).set(RIGHT_ARM_BEND, 25)
+                        .set(LEFT_ARM_PITCH, -85).set(LEFT_ARM_YAW, 28).set(TORSO_PITCH, 12).set(TORSO_YAW, 15).set(HEAD_PITCH, -4)
+                        .set(RIGHT_LEG_PITCH, -26).set(LEFT_LEG_PITCH, 24));
+        def("blade_counter",
+                k(ACTIVE, 0f, Ease.OUTQUAD).set(RIGHT_ARM_PITCH, -105).set(RIGHT_ARM_YAW, 85).set(RIGHT_ARM_ROLL, 20)
+                        .set(TORSO_YAW, 40).set(TORSO_PITCH, 8).set(LEFT_ARM_PITCH, -35).set(RIGHT_LEG_PITCH, -20).set(LEFT_LEG_PITCH, 18),
+                k(ACTIVE, 0.5f, Ease.LINEAR).set(RIGHT_ARM_PITCH, -95).set(RIGHT_ARM_YAW, 5).set(TORSO_YAW, 0).set(TORSO_PITCH, 10)
+                        .set(RIGHT_LEG_PITCH, -32).set(LEFT_LEG_PITCH, 26),
+                k(RECOVERY, 0f, Ease.OUTEXPO).set(RIGHT_ARM_PITCH, -78).set(RIGHT_ARM_YAW, -88).set(TORSO_YAW, -48)
+                        .set(TORSO_PITCH, 14).set(LEFT_ARM_PITCH, 18).set(HEAD_YAW, 20).set(RIGHT_LEG_PITCH, -42).set(LEFT_LEG_PITCH, 34),
+                k(RECOVERY, 0.45f, Ease.LINEAR).set(RIGHT_ARM_PITCH, -70).set(RIGHT_ARM_YAW, -78).set(TORSO_YAW, -40)
+                        .set(TORSO_PITCH, 12).set(HEAD_YAW, 15).set(RIGHT_LEG_PITCH, -34).set(LEFT_LEG_PITCH, 28));
+        def("blade_riposte",
+                k(ACTIVE, 0f, Ease.OUTCUBIC).set(RIGHT_ARM_PITCH, -38).set(RIGHT_ARM_YAW, 22).set(RIGHT_ARM_BEND, 60)
+                        .set(ITEM_PITCH, 80).set(LEFT_ARM_PITCH, -55).set(LEFT_ARM_YAW, 25).set(TORSO_YAW, 35).set(TORSO_PITCH, 6)
+                        .set(RIGHT_LEG_PITCH, -12).set(LEFT_LEG_PITCH, 10),
+                k(ACTIVE, 1f, Ease.OUTEXPO).set(RIGHT_ARM_PITCH, -88).set(RIGHT_ARM_YAW, 0).set(RIGHT_ARM_BEND, 0)
+                        .set(ITEM_PITCH, 85).set(LEFT_ARM_PITCH, -70).set(LEFT_ARM_YAW, 20).set(TORSO_YAW, -15).set(TORSO_PITCH, 14)
+                        .set(RIGHT_LEG_PITCH, -38).set(LEFT_LEG_PITCH, 30),
+                k(RECOVERY, 0.3f, Ease.INOUTSINE).set(RIGHT_ARM_PITCH, -85).set(RIGHT_ARM_ROLL, 22).set(ITEM_PITCH, 85)
+                        .set(ITEM_ROLL, 90).set(LEFT_ARM_PITCH, -70).set(TORSO_YAW, -20).set(TORSO_PITCH, 16)
+                        .set(RIGHT_LEG_PITCH, -38).set(LEFT_LEG_PITCH, 30),
+                k(RECOVERY, 0.65f, Ease.OUTQUAD).set(RIGHT_ARM_PITCH, -48).set(RIGHT_ARM_YAW, 28).set(RIGHT_ARM_BEND, 40)
+                        .set(ITEM_PITCH, 60).set(TORSO_YAW, 20).set(TORSO_PITCH, 6).set(RIGHT_LEG_PITCH, -15).set(LEFT_LEG_PITCH, 10));
+        def("pike_charge",
+                k(ACTIVE, 0f, Ease.OUTCUBIC).set(RIGHT_ARM_PITCH, -22).set(RIGHT_ARM_YAW, 32).set(RIGHT_ARM_BEND, 55)
+                        .set(LEFT_ARM_PITCH, -62).set(LEFT_ARM_YAW, 42).set(TORSO_YAW, 38).set(TORSO_PITCH, 18).set(ITEM_PITCH, 70)
+                        .set(RIGHT_LEG_PITCH, -25).set(LEFT_LEG_PITCH, 30),
+                k(ACTIVE, 0.4f, Ease.OUTEXPO).set(RIGHT_ARM_PITCH, -88).set(LEFT_ARM_PITCH, -96).set(LEFT_ARM_YAW, 12)
+                        .set(TORSO_YAW, -12).set(TORSO_PITCH, 26).set(ITEM_PITCH, 85).set(RIGHT_LEG_PITCH, -55).set(LEFT_LEG_PITCH, 42),
+                k(RECOVERY, 0.4f, Ease.LINEAR).set(RIGHT_ARM_PITCH, -84).set(LEFT_ARM_PITCH, -90).set(TORSO_PITCH, 20)
+                        .set(ITEM_PITCH, 85).set(RIGHT_LEG_PITCH, -35).set(LEFT_LEG_PITCH, 28));
+        def("pike_riposte",
+                k(ACTIVE, 0f, Ease.OUTCUBIC).set(RIGHT_ARM_PITCH, -30).set(RIGHT_ARM_YAW, 28).set(RIGHT_ARM_BEND, 55)
+                        .set(LEFT_ARM_PITCH, -65).set(LEFT_ARM_YAW, 40).set(TORSO_YAW, 35).set(ITEM_PITCH, 75),
+                k(ACTIVE, 1f, Ease.OUTEXPO).set(RIGHT_ARM_PITCH, -90).set(LEFT_ARM_PITCH, -98).set(LEFT_ARM_YAW, 12)
+                        .set(TORSO_YAW, -12).set(TORSO_PITCH, 18).set(ITEM_PITCH, 88).set(RIGHT_LEG_PITCH, -40).set(LEFT_LEG_PITCH, 32),
+                k(RECOVERY, 0.35f, Ease.INOUTSINE).set(RIGHT_ARM_PITCH, -82).set(LEFT_ARM_PITCH, -90).set(ITEM_PITCH, 88)
+                        .set(ITEM_ROLL, 80).set(TORSO_PITCH, 18).set(RIGHT_LEG_PITCH, -40).set(LEFT_LEG_PITCH, 32),
+                k(RECOVERY, 0.7f, Ease.OUTQUAD).set(RIGHT_ARM_PITCH, -40).set(LEFT_ARM_PITCH, -60).set(ITEM_PITCH, 60)
+                        .set(TORSO_PITCH, 6).set(RIGHT_LEG_PITCH, -15).set(LEFT_LEG_PITCH, 10));
+        def("maul_tremor",
+                k(WINDUP, 0.35f, Ease.OUTQUAD).set(RIGHT_ARM_PITCH, -120).set(LEFT_ARM_PITCH, -115).set(TORSO_PITCH, -8)
+                        .set(LEFT_LEG_PITCH, -22).set(RIGHT_LEG_PITCH, 8),
+                k(ACTIVE, 0f, Ease.OUTCUBIC).set(RIGHT_ARM_PITCH, -178).set(LEFT_ARM_PITCH, -176).set(TORSO_PITCH, -26)
+                        .set(HEAD_PITCH, -18).set(LEFT_LEG_PITCH, -28).set(RIGHT_LEG_PITCH, 14),
+                k(ACTIVE, 1f, Ease.INCUBIC).set(RIGHT_ARM_PITCH, -22).set(LEFT_ARM_PITCH, -22).set(TORSO_PITCH, 52).set(ITEM_PITCH, 55)
+                        .set(HEAD_PITCH, 22).set(RIGHT_LEG_PITCH, -42).set(LEFT_LEG_PITCH, 32).set(RIGHT_LEG_BEND, 40).set(LEFT_LEG_BEND, 30),
+                k(RECOVERY, 0.45f, Ease.LINEAR).set(RIGHT_ARM_PITCH, -20).set(LEFT_ARM_PITCH, -20).set(TORSO_PITCH, 48).set(ITEM_PITCH, 50)
+                        .set(HEAD_PITCH, 20).set(RIGHT_LEG_PITCH, -40).set(LEFT_LEG_PITCH, 30).set(RIGHT_LEG_BEND, 38).set(LEFT_LEG_BEND, 28));
+        def("maul_riposte",
+                k(ACTIVE, 0f, Ease.OUTCUBIC).set(RIGHT_ARM_PITCH, -176).set(LEFT_ARM_PITCH, -172).set(TORSO_PITCH, -18)
+                        .set(HEAD_PITCH, -10),
+                k(ACTIVE, 1f, Ease.INCUBIC).set(RIGHT_ARM_PITCH, -25).set(LEFT_ARM_PITCH, -25).set(TORSO_PITCH, 48)
+                        .set(HEAD_PITCH, 22).set(RIGHT_LEG_PITCH, -30).set(LEFT_LEG_PITCH, 24),
+                k(RECOVERY, 0.5f, Ease.LINEAR).set(RIGHT_ARM_PITCH, -24).set(LEFT_ARM_PITCH, -24).set(TORSO_PITCH, 44)
+                        .set(HEAD_PITCH, 20).set(RIGHT_LEG_PITCH, -28).set(LEFT_LEG_PITCH, 22));
+        // Enemy reactions to parries and criticals.
+        def("parried",
+                k(RECOVERY, 0.08f, Ease.OUTEXPO).set(RIGHT_ARM_PITCH, -150).set(RIGHT_ARM_ROLL, 30).set(LEFT_ARM_PITCH, -115)
+                        .set(LEFT_ARM_ROLL, -30).set(TORSO_PITCH, -24).set(HEAD_PITCH, -26).set(RIGHT_LEG_PITCH, 18).set(LEFT_LEG_PITCH, -12),
+                k(RECOVERY, 0.3f, Ease.OUTBACK).set(RIGHT_ARM_PITCH, -95).set(RIGHT_ARM_ROLL, 35).set(LEFT_ARM_PITCH, -70)
+                        .set(LEFT_ARM_ROLL, -30).set(TORSO_PITCH, -10).set(HEAD_PITCH, -10).set(RIGHT_LEG_PITCH, 12).set(LEFT_LEG_PITCH, -8),
+                k(RECOVERY, 0.55f, Ease.INOUTSINE).set(RIGHT_ARM_PITCH, -15).set(LEFT_ARM_PITCH, -12).set(TORSO_PITCH, 30)
+                        .set(HEAD_PITCH, 28).set(RIGHT_LEG_PITCH, -22).set(LEFT_LEG_PITCH, 12),
+                k(RECOVERY, 0.85f, Ease.LINEAR).set(RIGHT_ARM_PITCH, -12).set(LEFT_ARM_PITCH, -10).set(TORSO_PITCH, 26)
+                        .set(HEAD_PITCH, 24).set(RIGHT_LEG_PITCH, -18).set(LEFT_LEG_PITCH, 10));
+        // Impaled: a jerk back, a held beat, then the knees give and the body folds onto them.
+        // BODY_Y is a root height offset in model pixels (GeckoLib enemies).
+        def("riposted",
+                k(RECOVERY, 0.12f, Ease.OUTEXPO).set(TORSO_PITCH, -18).set(HEAD_PITCH, -28).set(RIGHT_ARM_PITCH, -45)
+                        .set(RIGHT_ARM_ROLL, 40).set(LEFT_ARM_PITCH, -45).set(LEFT_ARM_ROLL, -40).set(RIGHT_LEG_PITCH, 10).set(LEFT_LEG_PITCH, -6),
+                k(RECOVERY, 0.32f, Ease.LINEAR).set(TORSO_PITCH, -12).set(HEAD_PITCH, -24).set(RIGHT_ARM_PITCH, -55)
+                        .set(RIGHT_ARM_ROLL, 45).set(LEFT_ARM_PITCH, -55).set(LEFT_ARM_ROLL, -45).set(RIGHT_LEG_PITCH, 8).set(LEFT_LEG_PITCH, -4),
+                k(RECOVERY, 0.55f, Ease.INQUAD).set(TORSO_PITCH, 32).set(HEAD_PITCH, 38).set(RIGHT_ARM_PITCH, -12).set(LEFT_ARM_PITCH, -10)
+                        .set(RIGHT_ARM_ROLL, 8).set(LEFT_ARM_ROLL, -8).set(RIGHT_LEG_PITCH, -78).set(LEFT_LEG_PITCH, -62)
+                        .set(RIGHT_LEG_BEND, 95).set(LEFT_LEG_BEND, 82).set(BODY_Y, -6.5f),
+                k(RECOVERY, 0.85f, Ease.LINEAR).set(TORSO_PITCH, 38).set(HEAD_PITCH, 42).set(RIGHT_ARM_PITCH, -8).set(LEFT_ARM_PITCH, -6)
+                        .set(RIGHT_LEG_PITCH, -80).set(LEFT_LEG_PITCH, -64).set(RIGHT_LEG_BEND, 96).set(LEFT_LEG_BEND, 84).set(BODY_Y, -6.8f));
+
         // ------------------------------------------------------------ Hollowed (claws, no weapon)
         def("hollowed_swipe",
                 k(ACTIVE, 0f, Ease.OUTCUBIC).set(RIGHT_ARM_PITCH, -150).set(RIGHT_ARM_YAW, 50).set(RIGHT_ARM_ROLL, 30)

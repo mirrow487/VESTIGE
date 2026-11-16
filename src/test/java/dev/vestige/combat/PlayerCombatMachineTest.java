@@ -21,22 +21,39 @@ import org.junit.jupiter.api.Test;
 class PlayerCombatMachineTest {
     private static ActionDef action(int w, int a, int r) {
         return new ActionDef(new ActionDef.Timing(w, a, r, 0.4f, 0.4f, 0), ActionDef.Power.NONE, false, Optional.empty(),
-                ActionDef.Motion.NONE, Optional.empty(), "", Optional.empty(), Optional.empty(), 30, 0);
+                ActionDef.Motion.NONE, Optional.empty(), "", Optional.empty(), Optional.empty(), 30, 0, ActionDef.Defense.NONE, Optional.empty());
     }
+
+    private static ActionDef withDefense(ActionDef d, ActionDef.Defense defense, Optional<ActionDef.Charge> charge, Optional<ActionDef.Art> art) {
+        return new ActionDef(d.timing(), d.power(), d.hyperarmor(), d.hit(), d.motion(), d.telegraph(), d.pose(), charge, d.dodge(),
+                d.tracking(), d.inflictStagger(), defense, art);
+    }
+
+    private static final ActionDef GUARD = withDefense(action(4, 1, 6), new ActionDef.Defense(true, Optional.empty(), false),
+            Optional.of(new ActionDef.Charge(6000, 0f, 0f)), Optional.empty());
+    private static final ActionDef PARRY = withDefense(action(2, 4, 12),
+            new ActionDef.Defense(false, Optional.of(new ActionDef.Window(2, 6)), false), Optional.empty(), Optional.empty());
+    private static final ActionDef ART = withDefense(action(2, 12, 10), ActionDef.Defense.NONE, Optional.empty(),
+            Optional.of(new ActionDef.Art(20f, Optional.empty())));
 
     private static final ActionDef LIGHT = action(5, 3, 10);
     private static final ActionDef HEAVY = new ActionDef(new ActionDef.Timing(10, 3, 12, 0.4f, 0.4f, 0), ActionDef.Power.NONE, true,
             Optional.empty(), ActionDef.Motion.NONE, Optional.empty(), "", Optional.of(new ActionDef.Charge(14, 0.45f, 0f)),
-            Optional.empty(), 30, 0);
+            Optional.empty(), 30, 0, ActionDef.Defense.NONE, Optional.empty());
     private static final ActionDef ROLL = new ActionDef(new ActionDef.Timing(0, 10, 6, 0.4f, 0.4f, 0), ActionDef.Power.NONE, false,
             Optional.empty(), ActionDef.Motion.NONE, Optional.empty(), "", Optional.empty(),
-            Optional.of(new ActionDef.Dodge(3, 9, 3.5f, 10)), 30, 0);
+            Optional.of(new ActionDef.Dodge(3, 9, 3.5f, 10)), 30, 0, ActionDef.Defense.NONE, Optional.empty());
 
     private static final MoveSetHandle WEAPON = new MoveSetHandle(ResourceLocation.parse("test:blade"), new MoveSet(
-            Map.of("l1", LIGHT, "l2", LIGHT, "l3", LIGHT, "heavy", HEAVY, "run", LIGHT, "rollatk", LIGHT),
-            List.of("l1", "l2", "l3"), Optional.of("heavy"), Optional.of("run"), Optional.of("rollatk")));
+            Map.of("l1", LIGHT, "l2", LIGHT, "l3", LIGHT, "heavy", HEAVY, "run", LIGHT, "rollatk", LIGHT, "art", ART, "rip", LIGHT),
+            List.of("l1", "l2", "l3"), Optional.of("heavy"), Optional.of("run"), Optional.of("rollatk"), Optional.of("art"), Optional.of("rip")));
     private static final MoveSetHandle COMMON = new MoveSetHandle(ResourceLocation.parse("test:player"), new MoveSet(
-            Map.of("roll", ROLL, "backstep", action(0, 6, 4)), List.of(), Optional.empty(), Optional.empty(), Optional.empty()));
+            Map.of("roll", ROLL, "backstep", action(0, 6, 4), "guard_weapon", GUARD, "parry_buckler", PARRY), List.of(),
+            Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty()));
+
+    private String guardAction = "guard_weapon";
+    private float resonance;
+    private boolean riposte;
 
     private PlayerCombatMachine m;
     private boolean stamina;
@@ -48,6 +65,9 @@ class PlayerCombatMachineTest {
         public Optional<MoveSetHandle> common() { return Optional.of(COMMON); }
         public boolean canSpendStamina() { return stamina; }
         public boolean sprinting() { return sprinting; }
+        public Optional<String> guardAction() { return Optional.of(guardAction); }
+        public boolean canSpendResonance(float cost) { return resonance >= cost; }
+        public boolean riposteAvailable() { return riposte; }
     };
 
     @BeforeEach
@@ -221,5 +241,69 @@ class PlayerCombatMachineTest {
         assertTrue(press(CombatInput.LIGHT).isEmpty());
         ticks(5);
         assertTrue(press(CombatInput.LIGHT).isPresent());
+    }
+
+    // ------------------------------------------------------------------ guard, parry, arts, ripostes
+
+    @Test
+    void guardHoldsRaisedUntilReleased() {
+        RunningAction g = press(CombatInput.GUARD_PRESS).orElseThrow().action();
+        assertEquals(RunningAction.Kind.GUARD, g.kind);
+        ticks(3);
+        assertFalse(g.guarding(), "still raising");
+        ticks(30);
+        assertTrue(g.guarding());
+        assertEquals(4, g.elapsed(), "held at its peak");
+        m.input(CombatInput.GUARD_RELEASE, 2, Float.NaN, now, ctx);
+        ticks(3);
+        assertFalse(g.guarding(), "lowering");
+    }
+
+    @Test
+    void guardDropsStraightIntoAnAttackOrDodge() {
+        press(CombatInput.GUARD_PRESS);
+        ticks(10);
+        assertEquals("l1", press(CombatInput.LIGHT).orElseThrow().action().ref.action());
+        m.interrupt(now, 0);
+        press(CombatInput.GUARD_PRESS);
+        ticks(10);
+        assertEquals(RunningAction.Kind.DODGE, press(CombatInput.ROLL).orElseThrow().action().kind);
+    }
+
+    @Test
+    void bucklerParriesWithAShortWindow() {
+        guardAction = "parry_buckler";
+        RunningAction p = press(CombatInput.GUARD_PRESS).orElseThrow().action();
+        assertEquals(RunningAction.Kind.PARRY, p.kind);
+        assertFalse(p.inParryWindow(0));
+        ticks(2);
+        assertTrue(p.inParryWindow(0));
+        ticks(4);
+        assertFalse(p.inParryWindow(0), "window closed after 4 ticks");
+    }
+
+    @Test
+    void parryCannotCancelAnAttackEarly() {
+        guardAction = "parry_buckler";
+        press(CombatInput.LIGHT);
+        ticks(3);
+        assertTrue(press(CombatInput.GUARD_PRESS).isEmpty());
+    }
+
+    @Test
+    void artNeedsResonance() {
+        resonance = 10f;
+        assertTrue(press(CombatInput.ART).isEmpty());
+        assertFalse(m.busy());
+        resonance = 20f;
+        assertEquals(RunningAction.Kind.ART, press(CombatInput.ART).orElseThrow().action().kind);
+    }
+
+    @Test
+    void lightBecomesRiposteWhenATargetIsReeling() {
+        riposte = true;
+        RunningAction r = press(CombatInput.LIGHT).orElseThrow().action();
+        assertEquals(RunningAction.Kind.RIPOSTE, r.kind);
+        assertEquals("rip", r.ref.action());
     }
 }

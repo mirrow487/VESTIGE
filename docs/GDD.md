@@ -10,6 +10,7 @@
 | 1.1 | M1 | Development priorities (§0), equipment UI from the reference image (§9.5), Nether border divisor 4 (§6.1), Hush generation via biome source (§14.2), stronghold distance (§6.3), stance item swap (§7.3), combat key context (§7.2) |
 | 1.2 | M2 | §27: config options now ship with their systems (current keys listed); §30: milestone status. No gameplay design changes |
 | 1.3 | M3 | §7.3: until the RPG equipment slots exist (M5), holding a combat weapon is the combat stance; §9.1: Common baseline defence formula; §10.2: tier-0 weapons are also craftable; §27: vitals/combat keys; §30: combat moved ahead of core RPG systems at the owner's request (scope unchanged, order only) |
+| 1.4 | M4 | §7.7: weapon guard without a shield (absorption 0.55, stability 30); parried enemies reel 45 ticks (the riposte window); guard break lasts 24 ticks; backstabs need only a position behind the target until enemy awareness exists (M7 noise system); §8.3: Resonance thresholds (Resonant ≥50: +20% poise damage; Crescendo 100: next art +30% damage), +2 on block, −10 when hit unblocked; §25: weapons and enemies use 3D models (GeckoLib enemies, element-model weapons; flat sprites stay in the inventory) |
 **Scope note:** This is the design target. Every milestone will cut it into shippable, tested pieces. A feature counts as done only after it has been built and tested in-game.
 
 ---
@@ -1267,6 +1268,7 @@ All screens share one style kit: slate panels, brass trims, ember highlights, an
 - **Bosses** read clearly in silhouette from 30 blocks away. Weak points glow.
 - **Animations:** keyframed in Blockbench. Attacks have exaggerated windups (readability), snappy active frames, and weighty recoveries. Bosses get idle "breathing" loops so they never look frozen.
 - **Player animations:** custom attack, roll, flask, and riposte animations in first and third person.
+- **Model and animation quality bar (owner priority, M4):** no stiff vanilla poses or generic placeholder models. Every important enemy and weapon gets a distinctive 3D model (GeckoLib for creatures, element models for weapons) that stays blocky. Every animation shows anticipation, a clear impact and a recovery, and transitions blend smoothly. Each weapon class moves differently. Each boss gets unique attack animations per phase. Enemies get idle, movement, hit-reaction and death animations. Nothing counts as complete until it has been inspected in real in-game screenshots.
 
 ### 25.2 Audio
 - Bells (Bellwether), crackling wax (Tallow), clanking coins and furnaces (Tithe-Engine), and silence (Warden) are each boss's audio identity.

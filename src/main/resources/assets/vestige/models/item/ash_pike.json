@@ -1,6 +1,21 @@
 {
-  "parent": "minecraft:item/handheld",
-  "textures": {
-    "layer0": "vestige:item/ash_pike"
+  "loader": "neoforge:separate_transforms",
+  "gui_light": "front",
+  "base": {
+    "parent": "vestige:item/ash_pike_3d"
+  },
+  "perspectives": {
+    "gui": {
+      "parent": "minecraft:item/handheld",
+      "textures": {
+        "layer0": "vestige:item/ash_pike"
+      }
+    },
+    "fixed": {
+      "parent": "minecraft:item/handheld",
+      "textures": {
+        "layer0": "vestige:item/ash_pike"
+      }
+    }
   }
 }

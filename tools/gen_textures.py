@@ -101,6 +101,32 @@ def hand_maul():
     save(img, 'item/hand_maul.png')
 
 
+def plank_buckler():
+    img = Image.new('RGBA', (16, 16), (0, 0, 0, 0))
+    plank_hi = (150, 112, 70, 255)
+    iron = (78, 80, 92, 255)
+    for y in range(1, 15):
+        for x in range(1, 15):
+            d = ((x - 7.5) ** 2 + (y - 7.5) ** 2) ** 0.5
+            if d <= 6.6:
+                c = plank_hi if (x // 3) % 2 else WOOD
+                if x % 3 == 0:
+                    c = WOOD_LO
+                if d > 5.6:
+                    c = iron
+                px(img, x, y, c)
+    for x in range(2, 14):
+        px(img, x, 7, iron)
+        px(img, x, 8, iron)
+    for y in range(6, 10):
+        for x in range(6, 10):
+            px(img, x, y, STEEL_LO if (x in (6, 9) or y in (6, 9)) else STEEL)
+    px(img, 7, 7, EMBER)
+    px(img, 8, 8, EMBER)
+    outline(img)
+    save(img, 'item/plank_buckler.png')
+
+
 def humanoid_skin(path, skin, skin_dark, cloth, cloth_dark, accent, eye_glow, seed):
     """64x32 humanoid layout (HumanoidModel.createMesh, mirrored left limbs)."""
     rnd = random.Random(seed)
@@ -213,10 +239,8 @@ def reticle(path):
 keepsake_blade()
 ash_pike()
 hand_maul()
-humanoid_skin('entity/hollowed.png', skin=(150, 146, 138), skin_dark=(108, 104, 98), cloth=(98, 88, 76), cloth_dark=(64, 58, 52),
-              accent=(122, 102, 70), eye_glow=(196, 214, 222, 255), seed=7)
-humanoid_skin('entity/hollowed_brute.png', skin=(128, 120, 112), skin_dark=(90, 84, 78), cloth=(84, 62, 56), cloth_dark=(48, 42, 40),
-              accent=(138, 47, 36), eye_glow=(224, 120, 90, 255), seed=11)
+plank_buckler()
+# Hollowed and Brute skins are painted by tools/gen_models.py (GeckoLib models).
 star('particle/glint_white.png', (235, 240, 255))
 star('particle/glint_red.png', (230, 40, 30))
 ring('misc/telegraph_ring.png')

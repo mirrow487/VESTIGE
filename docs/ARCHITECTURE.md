@@ -88,6 +88,7 @@ Method: a throwaway NeoForge project (all candidate dependencies) was compiled. 
 | The GameTest world is creative, and new server players have 60 ticks of spawn protection | Test players are set to survival and run their light tick 61 times |
 | `/kill` deals `Float.MAX_VALUE`; scaling it ×5 overflowed to Infinity, giving NaN health and an unkillable entity | `HealthScaling.scaleAmount` saturates; regression GameTest |
 | Software rendering is slow, so screenshots landed several ticks late | The client driver slows the game with vanilla `/tick rate` while capturing |
+| Vanilla clamps the `max_health` attribute at 1024 (found in M4 tests) | With the ×5 scale, bosses will exceed it: boss health must be handled outside the vanilla attribute (planned with the boss framework, M6+) |
 
 ---
 
@@ -352,7 +353,7 @@ A reusable tile kit modeled on the owner's Elden Ring reference: `Tile` (24 and 
 
 ### 8.1 Sources
 - **Textures:** 16×16 (items and blocks) and entity sheets, generated or edited by `tools/*.py` (PIL) with fixed regional palettes (GDD §25). Original pixel art, no imported third-party assets.
-- **Models:** block and item models via datagen. Entity models are GeckoLib `.geo.json` (Blockbench-compatible), authored by `tools/` builders from cuboid definitions so they stay editable in Blockbench later.
+- **Models:** block models via datagen. Weapons are 3D element item models (Blockbench Java-model format) from `tools/gen_item_models.py`, shown in hands, on the ground and on heads, with the flat sprite kept for the inventory via `neoforge:separate_transforms`. Entity models are GeckoLib `.geo.json` (Blockbench-compatible) from `tools/gen_models.py`, built from cuboid definitions so they stay editable in Blockbench later.
 - **Animations:** GeckoLib `.animation.json` for entities and playerAnimator JSON for the player.
 
 ### 8.2 Timing sync: animations generated from movesets
@@ -428,7 +429,7 @@ Spark-style profiling is done in M12. GameTests assert worst-case timings for th
 | 008 | Content as datapack JSON, behaviors by registered id | Fast balancing, reloadable, mod-pack friendly | Hard-coded stats |
 | 009 | Server-authoritative outcomes, client-predicted feel with bounded latency tolerance | Responsive and multiplayer-safe | Fully client-authoritative hits (cheatable) |
 | 010 | New-world requirement | World presets apply at creation | Retro-generating existing worlds (unsafe) |
-| 011 | Humanoid enemies use a vanilla `HumanoidModel` posed every frame from the shared `PoseTimeline`; GeckoLib is reserved for non-humanoid creatures and bosses | One pose definition drives players (playerAnimator) and humanoid enemies; keeps the Minecraft look; no extra model files for humanoids | GeckoLib for every enemy (duplicated animation authoring) |
+| 011 (rev. 2, M4) | Every enemy, humanoids included, is a GeckoLib model: keyframed idle/walk/death, with combat poses sampled from the shared `PoseTimeline` and blended over the bones each frame (`HollowedGeoModel`). *Rev. 1 (M3) posed a vanilla `HumanoidModel`; replaced at the owner's request for distinctive, high-quality models and animations* | One pose definition still drives players (playerAnimator) and enemies, so hitboxes and animation stay in sync; enemies get distinctive silhouettes (hoods, claws, chains), elbows/knees and root motion that the vanilla biped lacks | Fully hand-keyframed attack animations per enemy (would drift from hitbox timing); vanilla biped (too stiff and generic) |
 | 012 | Datapack content goes through `core.SyncedDataTable`; server→client sends go through `core.Net` | One reload/sync path for movesets, weapons and enemies; a connection without VESTIGE channels (another mod's fake player) never crashes a send | Per-table hand-written packets; unguarded `PacketDistributor` calls |
 | 013 | Player combat prediction runs the same `PlayerCombatMachine` as the server | Instant animation on press with near-zero divergence; inputs carry a sequence number for reconciliation | Server-only timing (laggy feel); separate client logic (drift) |
 

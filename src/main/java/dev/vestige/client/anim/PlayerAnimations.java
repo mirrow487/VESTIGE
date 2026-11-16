@@ -97,7 +97,7 @@ public final class PlayerAnimations {
         speed.speed = 1f;
         KeyframeAnimationPlayer kap = new KeyframeAnimationPlayer(anim)
                 .setFirstPersonMode(FirstPersonMode.THIRD_PERSON_MODEL)
-                .setFirstPersonConfiguration(new FirstPersonConfiguration(true, true, true, false));
+                .setFirstPersonConfiguration(new FirstPersonConfiguration(true, true, true, true));
         layer.replaceAnimationWithFade(AbstractFadeModifier.standardFadeIn(FADE_IN, dev.kosmx.playerAnim.core.util.Ease.INOUTSINE), kap);
         PLAYING.put(player, new Playing(action, speed));
     }
@@ -111,7 +111,7 @@ public final class PlayerAnimations {
         KeyframeAnimation anim = toKeyframes(PoseTimeline.build(keys, windup, active, recovery));
         layer.replaceAnimationWithFade(AbstractFadeModifier.standardFadeIn(2, dev.kosmx.playerAnim.core.util.Ease.INOUTSINE),
                 new KeyframeAnimationPlayer(anim).setFirstPersonMode(FirstPersonMode.THIRD_PERSON_MODEL)
-                        .setFirstPersonConfiguration(new FirstPersonConfiguration(true, true, true, false)));
+                        .setFirstPersonConfiguration(new FirstPersonConfiguration(true, true, true, true)));
         PLAYING.remove(player);
     }
 

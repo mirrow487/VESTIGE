@@ -73,6 +73,17 @@ class CombatDataConsistencyTest {
             set.heavy().ifPresent(a -> { if (!set.actions().containsKey(a)) missing.add(id + " heavy " + a); });
             set.running().ifPresent(a -> { if (!set.actions().containsKey(a)) missing.add(id + " running " + a); });
             set.rolling().ifPresent(a -> { if (!set.actions().containsKey(a)) missing.add(id + " rolling " + a); });
+            set.art().ifPresent(a -> {
+                if (!set.actions().containsKey(a)) missing.add(id + " art " + a);
+                else if (set.actions().get(a).art().isEmpty()) missing.add(id + " art action without cost " + a);
+            });
+            set.riposte().ifPresent(a -> {
+                if (!set.actions().containsKey(a)) missing.add(id + " riposte " + a);
+                else if (!set.actions().get(a).defense().invulnerable()) missing.add(id + " riposte must be invulnerable " + a);
+            });
+            set.actions().forEach((name, def) -> def.art().flatMap(x -> x.onParry()).ifPresent(c -> {
+                if (!set.actions().containsKey(c)) missing.add(id + "#" + name + " on_parry " + c);
+            }));
         });
         assertTrue(missing.isEmpty(), String.valueOf(missing));
     }
@@ -80,10 +91,19 @@ class CombatDataConsistencyTest {
     @Test
     void playerMovesetHasDodgesAndReactions() {
         MoveSet player = MOVESETS.get("vestige:player");
-        for (String a : List.of("roll", "backstep", "flinch", "stagger")) {
+        for (String a : List.of("roll", "backstep", "flinch", "stagger", "guard_weapon", "guard_shield", "parry_buckler", "guard_break")) {
             assertTrue(player.actions().containsKey(a), "player moveset missing " + a);
         }
         assertTrue(player.actions().get("roll").dodge().isPresent());
+    }
+
+    @Test
+    void everyWeaponClassHasArtAndRiposte() {
+        WEAPONS.values().forEach(w -> {
+            MoveSet set = MOVESETS.get(w.moveset().toString());
+            assertTrue(set.art().isPresent(), w.moveset() + " has no weapon art");
+            assertTrue(set.riposte().isPresent(), w.moveset() + " has no riposte");
+        });
     }
 
     @Test
@@ -100,7 +120,7 @@ class CombatDataConsistencyTest {
                 problems.add(id + ": no moveset " + e.moveset());
                 return;
             }
-            for (String reaction : List.of("flinch", "stagger")) {
+            for (String reaction : List.of("flinch", "stagger", "parried", "riposted")) {
                 if (!set.actions().containsKey(reaction)) problems.add(id + ": missing " + reaction);
             }
             for (EnemyProfile.Attack a : e.attacks()) {

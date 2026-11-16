@@ -24,6 +24,13 @@ public final class CombatModule implements VestigeModule {
     public static final Supplier<AttachmentType<PlayerCombatState>> PLAYER_STATE =
             ATTACHMENTS.register("player_combat", () -> AttachmentType.builder(() -> new PlayerCombatState()).build());
 
+    /** Resonance (GDD §8.3), saved and synced to its owner. */
+    public static final Supplier<AttachmentType<dev.vestige.combat.resonance.Resonance>> RESONANCE = ATTACHMENTS.register("resonance",
+            () -> AttachmentType.builder(() -> new dev.vestige.combat.resonance.Resonance())
+                    .serialize(dev.vestige.combat.resonance.Resonance.CODEC)
+                    .sync((holder, to) -> holder == to, dev.vestige.combat.resonance.Resonance.STREAM_CODEC)
+                    .build());
+
     private static final DeferredRegister<net.minecraft.core.particles.ParticleType<?>> PARTICLES =
             DeferredRegister.create(net.minecraft.core.registries.Registries.PARTICLE_TYPE, VestigeIds.MOD_ID);
 
@@ -46,7 +53,11 @@ public final class CombatModule implements VestigeModule {
         modBus.addListener(CombatNetwork::register);
         gameBus.addListener(CombatModule::onPlayerTick);
         gameBus.addListener(CombatModule::onIncomingDamage);
-        VitalsModule.setBusyCheck(PlayerCombat::busy);
+        // Stamina: no regeneration mid-action, half speed while guarding (GDD §8.2).
+        VitalsModule.setRegenFactor(p -> {
+            var current = PlayerCombat.state(p).machine().current();
+            return current == null ? 1.0 : current.guarding() ? 0.5 : 0.0;
+        });
     }
 
     private static void onPlayerTick(PlayerTickEvent.Post event) {

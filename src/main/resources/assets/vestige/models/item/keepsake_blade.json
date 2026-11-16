@@ -1,6 +1,21 @@
 {
-  "parent": "minecraft:item/handheld",
-  "textures": {
-    "layer0": "vestige:item/keepsake_blade"
+  "loader": "neoforge:separate_transforms",
+  "gui_light": "front",
+  "base": {
+    "parent": "vestige:item/keepsake_blade_3d"
+  },
+  "perspectives": {
+    "gui": {
+      "parent": "minecraft:item/handheld",
+      "textures": {
+        "layer0": "vestige:item/keepsake_blade"
+      }
+    },
+    "fixed": {
+      "parent": "minecraft:item/handheld",
+      "textures": {
+        "layer0": "vestige:item/keepsake_blade"
+      }
+    }
   }
 }

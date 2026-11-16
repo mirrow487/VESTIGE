@@ -1,7 +1,7 @@
 package dev.vestige.client.combat;
 
 import dev.vestige.client.anim.PlayerAnimations;
-import dev.vestige.client.entity.HollowedModel;
+import dev.vestige.client.entity.HollowedGeoModel;
 import dev.vestige.client.fx.HitFx;
 import dev.vestige.client.fx.TelegraphFx;
 import dev.vestige.client.hud.CombatHud;
@@ -18,7 +18,7 @@ public final class CombatClient {
         PlayerAnimations.init();
         CombatData.MOVESETS.onClientUpdate(() -> {
             PlayerAnimations.clearCache();
-            HollowedModel.clearCache();
+            HollowedGeoModel.clearCache();
         });
         modBus.addListener(CombatKeys::register);
         modBus.addListener(CombatHud::register);

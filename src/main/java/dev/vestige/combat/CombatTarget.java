@@ -18,4 +18,19 @@ public interface CombatTarget {
 
     /** Pauses the entity's current action for the given hitstop ticks. */
     void applyHitstop(int ticks);
+
+    /** Its attack was parried: it reels, open to a riposte. */
+    void receiveParry(LivingEntity parrier);
+
+    /** Reeling from a parry or a poise break (front ripostes allowed). */
+    boolean isReeling();
+
+    /** Whether critical attacks (ripostes, backstabs) can start against it now. */
+    boolean canBeCritical();
+
+    /** A riposte or backstab has begun: play the victim reaction for the critical's duration. */
+    void beginCritical(LivingEntity attacker, int ticks);
+
+    /** Forced stagger from an attack's {@code inflict_stagger} (e.g. a pinning thrust). */
+    void forceStagger(int ticks);
 }

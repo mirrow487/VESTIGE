@@ -59,6 +59,12 @@ public final class DevDriver {
         VestigeIds.LOG.info("DRIVER enabled: scenario '{}'", scenario);
         if (scenario.equals("anim")) {
             buildAnimScenario();
+        } else if (scenario.equals("depth")) {
+            buildDepthScenario();
+        } else if (scenario.equals("items")) {
+            buildItemsScenario();
+        } else if (scenario.equals("models")) {
+            buildModelsScenario();
         } else if (scenario.equals("lock")) {
             buildLockScenario();
         } else if (scenario.equals("calib")) {
@@ -97,7 +103,10 @@ public final class DevDriver {
                 return true;
             }
             if (stepTicks >= timeout) {
-                fail(name, "timed out after " + timeout + " ticks");
+                var p = mc().player;
+                fail(name, "timed out after " + timeout + " ticks [main=" + (p == null ? "?" : p.getMainHandItem())
+                        + " slot0=" + (p == null ? "?" : p.getInventory().getItem(0)) + " selected=" + (p == null ? "?" : p.getInventory().selected)
+                        + " gamemode=" + (mc().gameMode == null ? "?" : mc().gameMode.getPlayerMode()) + "]");
                 return true;
             }
             return false;
@@ -264,6 +273,346 @@ public final class DevDriver {
         run(() -> {
             VestigeIds.LOG.info("DRIVER DONE checks={} failures={} {}", checks, FAILURES.size(), FAILURES);
             quitSoon = 40; // screenshots are written asynchronously
+        });
+    }
+
+    /** Runs code against the integrated server's copy of the local player (server thread). */
+    private static void onServerPlayer(java.util.function.Consumer<net.minecraft.server.level.ServerPlayer> action) {
+        run(() -> {
+            var server = mc().getSingleplayerServer();
+            var uuid = mc().player.getUUID();
+            server.execute(() -> {
+                var sp = server.getPlayerList().getPlayer(uuid);
+                if (sp != null) {
+                    action.accept(sp);
+                }
+            });
+        });
+        wait(2);
+    }
+
+    private static volatile boolean serverGuardAfterRelease;
+
+    private static RunningAction actionOf(net.minecraft.world.entity.EntityType<?> type) {
+        Entity e = nearest(type);
+        return e == null ? null : ClientActions.of(e);
+    }
+
+    /**
+     * Combat depth in the real client (M4 stage 1): guards, a buckler parry timed off a live
+     * Hollowed's glint, the riposte that follows, a backstab, the three weapon arts and the
+     * Resonance HUD.
+     */
+    private static void buildDepthScenario() {
+        setup();
+        command("difficulty peaceful");
+        command("tick rate 6");
+        command("give @p vestige:keepsake_blade");
+        selectSlot0();
+        waitUntil("holding the blade", 200, () -> mc().player.getMainHandItem().is(dev.vestige.weapon.WeaponModule.KEEPSAKE_BLADE.get()));
+
+        // Guards (third person, front).
+        camera(CameraType.THIRD_PERSON_FRONT);
+        press(CombatInput.GUARD_PRESS, Float.NaN);
+        waitUntil("weapon guard raised", 40, () -> mine() != null && mine().guarding());
+        shot("d01_guard_weapon");
+        press(CombatInput.GUARD_RELEASE, Float.NaN);
+        wait(12);
+        onServerPlayer(sp -> {
+            var a = dev.vestige.combat.player.PlayerCombat.state(sp).machine().current();
+            serverGuardAfterRelease = a != null && a.guarding();
+        });
+        check("server lowered the guard after release", () -> !serverGuardAfterRelease, "server still guarding");
+        command("item replace entity @p weapon.offhand with minecraft:shield");
+        wait(4);
+        press(CombatInput.GUARD_PRESS, Float.NaN);
+        waitUntil("shield guard raised", 40, () -> mine() != null && mine().guarding() && mine().ref.action().equals("guard_shield"));
+        shot("d02_guard_shield");
+        press(CombatInput.GUARD_RELEASE, Float.NaN);
+        wait(12);
+        command("item replace entity @p weapon.offhand with vestige:plank_buckler");
+        wait(4);
+        press(CombatInput.GUARD_PRESS, Float.NaN);
+        check("buckler press is a parry", () -> mine() != null && mine().ref.action().equals("parry_buckler"),
+                () -> "action " + (mine() == null ? "none" : mine().ref.action()));
+        shotAt("d03_parry_snap", 4);
+        wait(20);
+
+        // Live parry and riposte against an AI Hollowed.
+        command("difficulty normal");
+        recenter();
+        command("execute at @p rotated 0 0 run summon vestige:hollowed ^ ^ ^3");
+        camera(CameraType.THIRD_PERSON_BACK);
+        lockOnto(EntityModule.HOLLOWED);
+        waitUntil("hollowed winds up a parriable attack", 600, () -> {
+            RunningAction a = actionOf(EntityModule.HOLLOWED.get());
+            return a != null && a.def.parriable() && a.def.hit().isPresent() && a.phase() == ActionPhase.WINDUP
+                    && a.elapsed() >= a.def.timing().windup() - 3;
+        });
+        press(CombatInput.GUARD_PRESS, Float.NaN);
+        waitUntil("parry lands", 30, () -> {
+            RunningAction a = actionOf(EntityModule.HOLLOWED.get());
+            return a != null && a.ref.action().equals("parried");
+        });
+        shot("d10_parry_impact");
+        check("live parry made the hollowed reel", () -> {
+            RunningAction a = actionOf(EntityModule.HOLLOWED.get());
+            return a != null && a.ref.action().equals("parried");
+        }, "hollowed not parried");
+        check("parry earned resonance", () -> mc().player.getData(dev.vestige.combat.CombatModule.RESONANCE).value() >= 20f,
+                () -> "resonance " + mc().player.getData(dev.vestige.combat.CombatModule.RESONANCE).value());
+        waitUntil("riposte prompt available", 30, () -> ClientCombat.riposteTarget(mc().player).isPresent());
+        shot("d11_riposte_prompt");
+        press(CombatInput.LIGHT, Float.NaN);
+        // The riposte starts as soon as the parry's impact freeze ends (pressed early, it is buffered).
+        waitUntil("light became a riposte", 12, () -> mine() != null && mine().ref.action().equals("riposte"));
+        shotAt("d12_riposte_thrust", 9);
+        shotAt("d13_riposte_twist", 15);
+        wait(30);
+        check("riposte killed the hollowed", () -> nearest(EntityModule.HOLLOWED.get()) == null, "hollowed survived the riposte");
+        run(LockOn::release);
+
+        // Backstab: a Hollowed (no AI) facing away, the player just behind it.
+        recenter();
+        command("execute at @p rotated 0 0 run summon vestige:hollowed ^ ^ ^1.5 {NoAI:1b,Rotation:[0f,0f]}");
+        waitUntil("backstab target visible", 100, () -> nearest(EntityModule.HOLLOWED.get()) != null);
+        wait(5);
+        press(CombatInput.LIGHT, Float.NaN);
+        check("backstab from behind", () -> mine() != null && mine().ref.action().equals("riposte"),
+                () -> "action " + (mine() == null ? "none" : mine().ref.action()));
+        shotAt("d20_backstab", 9);
+        wait(30);
+        command("kill @e[type=vestige:hollowed]");
+
+        // Weapon arts at full Resonance (Crescendo), third person front.
+        command("difficulty peaceful");
+        camera(CameraType.THIRD_PERSON_FRONT);
+        onServerPlayer(sp -> dev.vestige.combat.resonance.ResonanceService.set(sp, 100f));
+        wait(4);
+        shot("d30_hud_crescendo");
+        press(CombatInput.ART, Float.NaN);
+        shotAt("d31_blade_riposte_stance", 6);
+        wait(30);
+        command("clear @p");
+        command("give @p vestige:ash_pike");
+        selectSlot0();
+        onServerPlayer(sp -> dev.vestige.combat.resonance.ResonanceService.set(sp, 100f));
+        wait(4);
+        press(CombatInput.ART, Float.NaN);
+        shotAt("d32_pike_charge_windup", 6);
+        shotAt("d33_pike_charge_lunge", 9);
+        wait(30);
+        command("clear @p");
+        command("give @p vestige:hand_maul");
+        selectSlot0();
+        onServerPlayer(sp -> dev.vestige.combat.resonance.ResonanceService.set(sp, 100f));
+        wait(4);
+        press(CombatInput.ART, Float.NaN);
+        shotAt("d34_maul_tremor_windup", 15);
+        shotAt("d35_maul_tremor_impact", 19);
+        check("art spent resonance", () -> mc().player.getData(dev.vestige.combat.CombatModule.RESONANCE).value() < 100f,
+                () -> "resonance " + mc().player.getData(dev.vestige.combat.CombatModule.RESONANCE).value());
+        wait(30);
+        command("tick rate 20");
+        run(() -> {
+            VestigeIds.LOG.info("DRIVER DONE checks={} failures={} {}", checks, FAILURES.size(), FAILURES);
+            quitSoon = 40;
+        });
+    }
+
+    /** Views the scene from a marker armor stand placed beside the player (the player is then rendered). */
+    private static void sideCamera(double dx, double dz, float yaw) {
+        command(String.format(java.util.Locale.ROOT,
+                "execute at @p run summon armor_stand ~%.2f ~1.15 ~%.2f {Marker:1b,Invisible:1b,NoGravity:1b,Tags:[\"cam\"],Rotation:[%.1ff,8f]}",
+                dx, dz, yaw));
+        waitUntil("camera stand visible", 60, () -> nearest(net.minecraft.world.entity.EntityType.ARMOR_STAND) != null);
+        run(() -> {
+            mc().options.setCameraType(CameraType.FIRST_PERSON);
+            mc().setCameraEntity(nearest(net.minecraft.world.entity.EntityType.ARMOR_STAND));
+        });
+        wait(3);
+    }
+
+    private static void playerCamera() {
+        run(() -> mc().setCameraEntity(mc().player));
+        command("kill @e[type=armor_stand,tag=cam]");
+    }
+
+    private static boolean hasModel(net.minecraft.world.item.Item item) {
+        var model = mc().getItemRenderer().getModel(new net.minecraft.world.item.ItemStack(item), mc().level, mc().player, 0);
+        return model != mc().getModelManager().getMissingModel();
+    }
+
+    /**
+     * 3D weapon item models in the real client: each weapon in hand from the front, the side and first
+     * person, mid-swing, the buckler raised, items on the ground and the flat inventory icons.
+     */
+    private static void buildItemsScenario() {
+        setup();
+        command("difficulty peaceful");
+        for (var item : java.util.List.<java.util.function.Supplier<net.minecraft.world.item.Item>>of(
+                dev.vestige.weapon.WeaponModule.KEEPSAKE_BLADE::get, dev.vestige.weapon.WeaponModule.ASH_PIKE::get,
+                dev.vestige.weapon.WeaponModule.HAND_MAUL::get, dev.vestige.weapon.WeaponModule.PLANK_BUCKLER::get)) {
+            check("item model present", () -> hasModel(item.get()), () -> "missing model for " + item.get());
+        }
+        command("tick rate 6");
+        command("item replace entity @p weapon.offhand with vestige:plank_buckler");
+        String[][] weapons = {{"keepsake_blade", "blade"}, {"ash_pike", "pike"}, {"hand_maul", "maul"}};
+        for (String[] w : weapons) {
+            command("item replace entity @p weapon.mainhand with vestige:" + w[0]);
+            waitUntil("armed with " + w[0], 60, ClientCombat::armed);
+            camera(CameraType.THIRD_PERSON_FRONT);
+            shot("i_" + w[1] + "_front");
+            sideCamera(-3.6, 0.3, -90f);
+            shot("i_" + w[1] + "_side");
+            press(CombatInput.LIGHT, Float.NaN);
+            waitUntil("swing started", 20, () -> mine() != null);
+            run(() -> {
+                var a = mine();
+                remembered[0] = a == null ? 0 : a.def.timing().windup();
+            });
+            step(() -> mine() == null || mine().elapsed() >= remembered[0] - 1);
+            shot("i_" + w[1] + "_side_windup");
+            step(() -> mine() == null || mine().elapsed() >= remembered[0] + 1);
+            shot("i_" + w[1] + "_side_strike");
+            wait(30);
+            playerCamera();
+            camera(CameraType.FIRST_PERSON);
+            shot("i_" + w[1] + "_firstperson");
+        }
+        // Weapon arts from the side (Resonance filled first).
+        String[][] arts = {{"keepsake_blade", "blade", "6", "12"}, {"ash_pike", "pike", "10", "14"}, {"hand_maul", "maul", "15", "19"}};
+        for (String[] a : arts) {
+            command("item replace entity @p weapon.mainhand with vestige:" + a[0]);
+            waitUntil("armed with " + a[0], 60, ClientCombat::armed);
+            onServerPlayer(sp -> dev.vestige.combat.resonance.ResonanceService.set(sp, 100f));
+            wait(4);
+            sideCamera(-3.6, 0.3, -90f);
+            press(CombatInput.ART, Float.NaN);
+            shotAt("i_art_" + a[1] + "_side_1", Integer.parseInt(a[2]));
+            shotAt("i_art_" + a[1] + "_side_2", Integer.parseInt(a[3]));
+            press(CombatInput.GUARD_RELEASE, Float.NaN);
+            wait(40);
+            playerCamera();
+        }
+        // Buckler: the parry snap from the side and front, and in first person.
+        command("item replace entity @p weapon.mainhand with vestige:keepsake_blade");
+        wait(4);
+        sideCamera(3.6, 0.3, 90f);
+        press(CombatInput.GUARD_PRESS, Float.NaN);
+        shotAt("i_buckler_parry_side_1tuck", 2);
+        shotAt("i_buckler_parry_side_2snap", 4);
+        shotAt("i_buckler_parry_side_3swat", 8);
+        press(CombatInput.GUARD_RELEASE, Float.NaN);
+        wait(30);
+        playerCamera();
+        camera(CameraType.THIRD_PERSON_FRONT);
+        press(CombatInput.GUARD_PRESS, Float.NaN);
+        shotAt("i_buckler_parry_front_1tuck", 2);
+        shotAt("i_buckler_parry_front_2snap", 4);
+        shotAt("i_buckler_parry_front_3swat", 8);
+        press(CombatInput.GUARD_RELEASE, Float.NaN);
+        wait(30);
+        camera(CameraType.FIRST_PERSON);
+        press(CombatInput.GUARD_PRESS, Float.NaN);
+        shotAt("i_buckler_parry_firstperson_2snap", 4);
+        shotAt("i_buckler_parry_firstperson_3swat", 8);
+        press(CombatInput.GUARD_RELEASE, Float.NaN);
+        wait(30);
+        // On the ground.
+        command("tick rate 20");
+        command("execute at @p run tp @p ~ ~ ~ 0 50");
+        int i = 0;
+        for (String id : new String[] {"keepsake_blade", "ash_pike", "hand_maul", "plank_buckler"}) {
+            command(String.format(java.util.Locale.ROOT,
+                    "execute at @p run summon item ~%.1f ~ ~2.2 {Item:{id:\"vestige:%s\",count:1},PickupDelay:32767s,Age:-32768s}", -1.5 + i++, id));
+        }
+        wait(30);
+        shot("i_ground");
+        command("kill @e[type=item]");
+        // Inventory icons stay flat sprites.
+        command("give @p vestige:ash_pike");
+        command("give @p vestige:hand_maul");
+        command("give @p vestige:plank_buckler");
+        run(() -> mc().setScreen(new net.minecraft.client.gui.screens.inventory.InventoryScreen(mc().player)));
+        wait(10);
+        shot("i_inventory");
+        run(() -> mc().setScreen(null));
+        run(() -> {
+            VestigeIds.LOG.info("DRIVER DONE checks={} failures={} {}", checks, FAILURES.size(), FAILURES);
+            quitSoon = 40;
+        });
+    }
+
+    /** Freezes an entity's mirrored action at a tick so a pose can be inspected (dev only). */
+    private static void freeze(java.util.function.Supplier<? extends net.minecraft.world.entity.EntityType<?>> type, String action, int tick) {
+        run(() -> mc().level.getEntities(mc().player, mc().player.getBoundingBox().inflate(12), e -> e.getType() == type.get())
+                .forEach(e -> {
+                    RunningAction ra = ClientActions.start(e.getId(), action, -1, Float.NaN, false);
+                    if (ra != null) {
+                        ra.setElapsed(tick);
+                        ra.addHitstop(1_000_000);
+                    }
+                }));
+        wait(4);
+    }
+
+    private static void unfreeze() {
+        run(() -> new java.util.ArrayList<>(ClientActions.all().keySet()).forEach(ClientActions::end));
+        wait(3);
+    }
+
+    /**
+     * Model and animation inspection: Hollowed and Brute side by side, front and side views, frozen
+     * at key poses, then the death collapse. HUD hidden for clean screenshots.
+     */
+    private static void buildModelsScenario() {
+        setup();
+        command("difficulty normal");
+        command("time set 6000");
+        command("execute at @p rotated 0 0 run summon vestige:hollowed ^1.3 ^ ^4 {NoAI:1b,Rotation:[180f,0f]}");
+        command("execute at @p rotated 0 0 run summon vestige:hollowed_brute ^-1.6 ^ ^4.4 {NoAI:1b,Rotation:[180f,0f]}");
+        run(() -> mc().options.hideGui = true);
+        camera(CameraType.FIRST_PERSON);
+        waitUntil("models visible", 100, () -> nearest(EntityModule.HOLLOWED.get()) != null && nearest(EntityModule.HOLLOWED_BRUTE.get()) != null);
+        wait(20);
+        for (String view : new String[] {"front", "side"}) {
+            if (view.equals("side")) {
+                command("execute as @e[type=vestige:hollowed] at @s run tp @s ~ ~ ~ 90 0");
+                command("execute as @e[type=vestige:hollowed_brute] at @s run tp @s ~ ~ ~ 90 0");
+                wait(10);
+            }
+            shot("m_" + view + "_1_idle");
+            freeze(EntityModule.HOLLOWED, "vestige:hollowed#swipe", 14);
+            freeze(EntityModule.HOLLOWED_BRUTE, "vestige:hollowed_brute#overhead_slam", 22);
+            shot("m_" + view + "_2_windup_peak");
+            unfreeze();
+            freeze(EntityModule.HOLLOWED, "vestige:hollowed#swipe", 17);
+            freeze(EntityModule.HOLLOWED_BRUTE, "vestige:hollowed_brute#overhead_slam", 25);
+            shot("m_" + view + "_3_strike");
+            unfreeze();
+            freeze(EntityModule.HOLLOWED, "vestige:hollowed#lunge_grab", 18);
+            freeze(EntityModule.HOLLOWED_BRUTE, "vestige:hollowed_brute#sweep", 16);
+            shot("m_" + view + "_4_lunge_and_sweep_peak");
+            unfreeze();
+            freeze(EntityModule.HOLLOWED, "vestige:hollowed#parried", 8);
+            freeze(EntityModule.HOLLOWED_BRUTE, "vestige:hollowed_brute#parried", 8);
+            shot("m_" + view + "_5_parried");
+            unfreeze();
+            freeze(EntityModule.HOLLOWED, "vestige:hollowed#riposted", 32);
+            freeze(EntityModule.HOLLOWED_BRUTE, "vestige:hollowed_brute#riposted", 32);
+            shot("m_" + view + "_6_riposted");
+            unfreeze();
+        }
+        command("kill @e[type=vestige:hollowed]");
+        wait(12);
+        shot("m_side_7_death_mid");
+        wait(16);
+        shot("m_side_8_death_end");
+        run(() -> {
+            mc().options.hideGui = false;
+            VestigeIds.LOG.info("DRIVER DONE checks={} failures={} {}", checks, FAILURES.size(), FAILURES);
+            quitSoon = 40;
         });
     }
 

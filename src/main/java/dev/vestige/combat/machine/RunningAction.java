@@ -25,7 +25,7 @@ public final class RunningAction {
     boolean holding;
     int chargeTicks;
 
-    public enum Kind { LIGHT, HEAVY, RUNNING, ROLLING, DODGE, OTHER }
+    public enum Kind { LIGHT, HEAVY, RUNNING, ROLLING, DODGE, GUARD, PARRY, ART, RIPOSTE, OTHER }
 
     public RunningAction(ActionRef ref, ActionDef def, int seq, float dirYaw, long startTick, Kind kind) {
         this.ref = ref;
@@ -103,6 +103,23 @@ public final class RunningAction {
     public boolean invulnerable(int toleranceTicks) {
         return def.dodge().map(d -> elapsed >= d.iframeStart() - toleranceTicks && elapsed < d.iframeEnd()).orElse(false);
     }
+
+    /** True while a guard action is raised and held (GDD §7.7). */
+    public boolean guarding() {
+        return def.defense().guard() && elapsed >= def.timing().windup() && phase() != dev.vestige.combat.action.ActionPhase.RECOVERY
+                && phase() != dev.vestige.combat.action.ActionPhase.DONE;
+    }
+
+    /** True inside this action's parry window. */
+    public boolean inParryWindow(int toleranceTicks) {
+        return def.defense().parry().map(w -> elapsed >= w.start() - toleranceTicks && elapsed < w.end()).orElse(false);
+    }
+
+    /** Additive damage bonus fixed when the action started (e.g. a Crescendo art). */
+    public float damageBonus;
+
+    /** Set once this action has parried something (counters fire once). */
+    public boolean parrySucceeded;
 
     /** True during the first ticks of the i-frame window, which count as a perfect dodge. */
     public boolean perfectDodgeWindow(int toleranceTicks) {

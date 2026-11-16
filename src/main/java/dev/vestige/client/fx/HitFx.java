@@ -33,13 +33,48 @@ public final class HitFx {
             return;
         }
         hitsSeen++;
-        // Hitstop on attacker and target.
-        if (p.attackerId() == me.getId() && ClientCombat.machine().current() != null) {
-            ClientCombat.machine().current().addHitstop(p.hitstop());
-        } else {
-            ClientActions.addHitstop(p.attackerId(), p.hitstop());
+        // Hitstop on attacker and target (the local player's own action lives in the predicted machine).
+        for (int id : new int[] {p.attackerId(), p.targetId()}) {
+            if (id == me.getId()) {
+                if (ClientCombat.machine().current() != null) {
+                    ClientCombat.machine().current().addHitstop(p.hitstop());
+                }
+            } else {
+                ClientActions.addHitstop(id, p.hitstop());
+            }
         }
-        ClientActions.addHitstop(p.targetId(), p.hitstop());
+        switch (p.hitKind()) {
+            case PARRY -> {
+                parry(mc, p, me);
+                return;
+            }
+            case BLOCK -> {
+                block(mc, p);
+                return;
+            }
+            case GUARD_BREAK -> {
+                mc.level.playLocalSound(p.x(), p.y(), p.z(), SoundEvents.SHIELD_BREAK, SoundSource.PLAYERS, 1.2f, 0.8f, false);
+                burst(mc, ParticleTypes.CRIT, p, 16, 0.9);
+                if (p.targetId() == me.getId()) {
+                    shake = Math.max(shake, 3.0f);
+                }
+                return;
+            }
+            case RIPOSTE -> {
+                parriesOrCrits++;
+                burst(mc, ParticleTypes.DAMAGE_INDICATOR, p, 14, 0.7);
+                burst(mc, ParticleTypes.CRIT, p, 24, 1.1);
+                mc.level.playLocalSound(p.x(), p.y(), p.z(), SoundEvents.PLAYER_ATTACK_CRIT, SoundSource.PLAYERS, 1.2f, 0.7f, false);
+                mc.level.playLocalSound(p.x(), p.y(), p.z(), SoundEvents.TRIDENT_HIT, SoundSource.PLAYERS, 1.0f, 0.6f, false);
+                if (p.attackerId() == me.getId()) {
+                    shake = Math.max(shake, 2.6f);
+                    CombatHud.flash(0xC03020, 0.7f);
+                }
+                return;
+            }
+            default -> {
+            }
+        }
 
         int sparks = p.heavy() ? 14 : 7;
         for (int i = 0; i < sparks; i++) {
@@ -56,6 +91,42 @@ public final class HitFx {
             shake = Math.max(shake, p.heavy() ? 1.4f : 0.6f);
         } else if (p.targetId() == me.getId()) {
             shake = Math.max(shake, 2.4f);
+        }
+    }
+
+    /** For tests/driver: parries and criticals seen. */
+    public static volatile int parriesOrCrits;
+
+    private static void burst(Minecraft mc, net.minecraft.core.particles.ParticleOptions type, CombatPayloads.HitFeedback p, int n, double spread) {
+        for (int i = 0; i < n; i++) {
+            mc.level.addParticle(type, p.x(), p.y(), p.z(), (RANDOM.nextDouble() - 0.5) * spread, RANDOM.nextDouble() * spread * 0.6,
+                    (RANDOM.nextDouble() - 0.5) * spread);
+        }
+    }
+
+    /** The parry is the most important feedback in the game: unmistakable sight, sound and feel. */
+    private static void parry(Minecraft mc, CombatPayloads.HitFeedback p, LocalPlayer me) {
+        parriesOrCrits++;
+        if (p.targetId() == me.getId() && ClientCombat.machine().current() != null) {
+            // Mirror the server: a successful parry can be cancelled into a riposte at once.
+            ClientCombat.machine().current().parrySucceeded = true;
+        }
+        burst(mc, ParticleTypes.ENCHANTED_HIT, p, 22, 1.2);
+        burst(mc, ParticleTypes.END_ROD, p, 10, 0.5);
+        burst(mc, ParticleTypes.FIREWORK, p, 6, 0.35);
+        mc.level.playLocalSound(p.x(), p.y(), p.z(), SoundEvents.ANVIL_LAND, SoundSource.PLAYERS, 0.8f, 1.7f, false);
+        mc.level.playLocalSound(p.x(), p.y(), p.z(), SoundEvents.BELL_BLOCK, SoundSource.PLAYERS, 1.0f, 1.4f, false);
+        if (p.targetId() == me.getId()) {
+            shake = Math.max(shake, 1.8f);
+            CombatHud.flash(0xF2D27A, 1.0f);
+        }
+    }
+
+    private static void block(Minecraft mc, CombatPayloads.HitFeedback p) {
+        burst(mc, ParticleTypes.CRIT, p, 6, 0.6);
+        mc.level.playLocalSound(p.x(), p.y(), p.z(), SoundEvents.SHIELD_BLOCK, SoundSource.PLAYERS, 1.0f, 0.9f + RANDOM.nextFloat() * 0.2f, false);
+        if (p.targetId() == mc.player.getId()) {
+            shake = Math.max(shake, 0.8f);
         }
     }
 

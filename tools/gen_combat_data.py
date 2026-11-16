@@ -22,7 +22,7 @@ def write(path, obj):
 
 def action(windup, active, recovery, pose, *, stamina=0, mv=1.0, poise=0, damage=0, hit=None, motion=None,
            telegraph=None, hyperarmor=False, charge=None, dodge=None, tracking=30, stagger=0,
-           combo=0.4, cancel=0.4, hitstop=3):
+           combo=0.4, cancel=0.4, hitstop=3, guard=False, parry=None, invulnerable=False, art=None):
     a = {
         'timing': {'windup': windup, 'active': active, 'recovery': recovery,
                    'combo_window': combo, 'cancel_window': cancel, 'hitstop': hitstop},
@@ -45,7 +45,23 @@ def action(windup, active, recovery, pose, *, stamina=0, mv=1.0, poise=0, damage
         a['tracking'] = tracking
     if stagger:
         a['inflict_stagger'] = stagger
+    defense = {}
+    if guard:
+        defense['guard'] = True
+    if parry:
+        defense['parry'] = {'start': parry[0], 'end': parry[1]}
+    if invulnerable:
+        defense['invulnerable'] = True
+    if defense:
+        a['defense'] = defense
+    if art:
+        a['art'] = art
     return a
+
+
+# A held guard: raised over the windup, then paused at its peak for as long as the button is held
+# (reuses the charge hold), lowered over the recovery.
+HOLD = {'max_ticks': 6000, 'motion_bonus': 0}
 
 
 def arc(reach, frm, to, y_max=2.2):
@@ -60,8 +76,12 @@ def circle(radius, offset, y_max=1.6):
     return {'type': 'circle', 'radius': radius, 'offset': offset, 'y_min': -0.5, 'y_max': y_max}
 
 
-def moveset(actions, light=None, heavy=None, running=None, rolling=None):
+def moveset(actions, light=None, heavy=None, running=None, rolling=None, art=None, riposte=None):
     m = {'actions': actions}
+    if art:
+        m['art'] = art
+    if riposte:
+        m['riposte'] = riposte
     if light:
         m['light'] = light
     if heavy:
@@ -82,6 +102,12 @@ write('vestige/vestige/movesets/player.json', moveset({
                        hitstop=0),
     'flinch': action(0, 0, 8, 'flinch', hitstop=0),
     'stagger': action(0, 0, 24, 'stagger', hitstop=0),
+    # GDD §7.7. Guards hold at their peak while the button is held; a buckler parries instead.
+    'guard_weapon': action(4, 1, 6, 'guard_weapon', guard=True, charge=HOLD, combo=0.0, cancel=0.0, hitstop=0),
+    'guard_shield': action(3, 1, 5, 'guard_shield', guard=True, charge=HOLD, combo=0.0, cancel=0.0, hitstop=0),
+    # 4-tick parry window starting on tick 2 (GDD §7.7); a committed recovery if it whiffs.
+    'parry_buckler': action(2, 4, 12, 'parry_buckler', stamina=8, parry=(2, 6), combo=0.5, cancel=0.5, hitstop=0),
+    'guard_break': action(0, 0, 24, 'guard_break', hitstop=0),
 }))
 
 # ---------------------------------------------------------------- blade (GDD §7.4: 5/3/7, 12 stamina; heavy 10/3/12, 22)
@@ -95,7 +121,15 @@ write('vestige/vestige/movesets/blade.json', moveset({
     'running': action(6, 3, 9, 'blade_running', stamina=14, mv=1.1, poise=10, hit=arc(2.8, 50, -50),
                       motion={'windup': 0.25, 'active': 0.30}),
     'rolling': action(4, 3, 8, 'blade_rolling', stamina=10, mv=0.9, poise=7, hit=arc(2.6, -40, 60), motion={'active': 0.12}),
-}, light=['light_1', 'light_2', 'light_3', 'light_4'], heavy='heavy', running='running', rolling='rolling'))
+    # Art: Riposte Stance (GDD §7.11). A parry stance; a successful parry triggers the counter-slash.
+    'riposte_stance': action(2, 12, 10, 'blade_riposte_stance', stamina=10, parry=(1, 14), hitstop=0,
+                             art={'cost': 20, 'on_parry': 'riposte_counter'}),
+    'riposte_counter': action(2, 3, 12, 'blade_counter', mv=2.2, poise=30, hit=arc(2.8, 60, -60), motion={'active': 0.2},
+                              hitstop=6, art={'cost': 0}),
+    # Critical (riposte / backstab), GDD §7.5 motion value 3.0.
+    'riposte': action(7, 3, 16, 'blade_riposte', mv=3.0, hit=thrust(2.8, 0.6), invulnerable=True, hitstop=9),
+}, light=['light_1', 'light_2', 'light_3', 'light_4'], heavy='heavy', running='running', rolling='rolling',
+   art='riposte_stance', riposte='riposte'))
 
 # ---------------------------------------------------------------- pike (6/2/9, 13; heavy 11/3/13, 24)
 write('vestige/vestige/movesets/pike.json', moveset({
@@ -107,7 +141,12 @@ write('vestige/vestige/movesets/pike.json', moveset({
     'running': action(6, 3, 10, 'pike_running', stamina=15, mv=1.15, poise=10, hit=thrust(3.8, 0.5),
                       motion={'windup': 0.30, 'active': 0.35}),
     'rolling': action(4, 2, 8, 'pike_thrust', stamina=10, mv=0.9, poise=6, hit=thrust(3.4)),
-}, light=['light_1', 'light_2', 'light_3'], heavy='heavy', running='running', rolling='rolling'))
+    # Art: Impaling Charge. Dash thrust that pins small enemies (forced stagger).
+    'impaling_charge': action(7, 5, 14, 'pike_charge', stamina=20, mv=1.6, poise=30, hit=thrust(3.0, 0.6),
+                              motion={'windup': 0.05, 'active': 0.55}, hyperarmor=True, stagger=30, hitstop=6, art={'cost': 30}),
+    'riposte': action(7, 3, 16, 'pike_riposte', mv=3.0, hit=thrust(3.2, 0.6), invulnerable=True, hitstop=9),
+}, light=['light_1', 'light_2', 'light_3'], heavy='heavy', running='running', rolling='rolling',
+   art='impaling_charge', riposte='riposte'))
 
 # ---------------------------------------------------------------- maul (14/4/16, 24; heavy 20/5/20, 40)
 write('vestige/vestige/movesets/maul.json', moveset({
@@ -118,7 +157,12 @@ write('vestige/vestige/movesets/maul.json', moveset({
     'running': action(10, 4, 14, 'maul_overhead', stamina=26, mv=1.35, poise=26, hit=arc(2.6, 40, -40),
                       motion={'windup': 0.30, 'active': 0.10}, hitstop=4),
     'rolling': action(8, 4, 14, 'maul_swing', stamina=20, mv=1.1, poise=20, hit=arc(2.6, 60, -60), hitstop=4),
-}, light=['light_1', 'light_2'], heavy='heavy', running='running', rolling='rolling'))
+    # Art: Tremor. Ground pound: ring shockwave around the player, huge poise damage.
+    'tremor': action(16, 3, 20, 'maul_tremor', stamina=30, mv=1.5, poise=70, hit=circle(3.5, 0.0, 1.4), hyperarmor=True,
+                     hitstop=7, art={'cost': 35}),
+    'riposte': action(9, 4, 16, 'maul_riposte', mv=2.6, hit=arc(2.6, 20, -20), invulnerable=True, hitstop=10),
+}, light=['light_1', 'light_2'], heavy='heavy', running='running', rolling='rolling',
+   art='tremor', riposte='riposte'))
 
 # ---------------------------------------------------------------- enemies (GDD §18.1). Every attack has >= 9 windup ticks.
 write('vestige/vestige/movesets/hollowed.json', moveset({
@@ -130,6 +174,8 @@ write('vestige/vestige/movesets/hollowed.json', moveset({
                          telegraph={'glint': 'grab', 'lead': 8}, tracking=20, stagger=20),
     'flinch': action(0, 0, 10, 'flinch', hitstop=0),
     'stagger': action(0, 0, 40, 'stagger', hitstop=0),
+    'parried': action(0, 0, 45, 'parried', hitstop=0),
+    'riposted': action(0, 0, 50, 'riposted', hitstop=0),
 }))
 write('vestige/vestige/movesets/hollowed_brute.json', moveset({
     'overhead_slam': action(22, 3, 26, 'brute_slam', damage=40, hit=circle(1.8, 1.6), hyperarmor=True, tracking=15, hitstop=5,
@@ -138,6 +184,8 @@ write('vestige/vestige/movesets/hollowed_brute.json', moveset({
                     telegraph={'glint': 'white', 'lead': 6}),
     'flinch': action(0, 0, 12, 'flinch', hitstop=0),
     'stagger': action(0, 0, 50, 'stagger', hitstop=0),
+    'parried': action(0, 0, 40, 'parried', hitstop=0),
+    'riposted': action(0, 0, 50, 'riposted', hitstop=0),
 }))
 
 write('vestige/vestige/enemies/hollowed.json', {
@@ -168,6 +216,15 @@ weapon('ash_pike', ['vestige:ash_pike'], 'pike', 'vestige:pike', 55, 4.5)
 weapon('hand_maul', ['vestige:hand_maul'], 'maul', 'vestige:maul', 72, 7.0)
 for mat, ar, w in [('wooden', 30, 2.0), ('stone', 40, 3.0), ('golden', 38, 2.5), ('iron', 52, 3.0), ('diamond', 66, 3.5), ('netherite', 80, 4.0)]:
     weapon('vanilla_%s_sword' % mat, ['minecraft:%s_sword' % mat], 'blade', 'vestige:blade', ar, w, 0.9)
+
+# ---------------------------------------------------------------- shields (GDD §7.7)
+def shield(name, items, kind, absorption, stability, weight):
+    write('vestige/vestige/shields/%s.json' % name, {'items': items, 'kind': kind, 'absorption': absorption,
+                                                     'stability': stability, 'weight': weight})
+
+
+shield('plank_buckler', ['vestige:plank_buckler'], 'buckler', 0.7, 35, 1.5)
+shield('vanilla_shield', ['minecraft:shield'], 'kite', 0.9, 55, 4.0)
 
 # ---------------------------------------------------------------- damage types and tags
 for name, msg in [('weapon', 'vestige.weapon'), ('enemy_attack', 'vestige.enemy')]:
@@ -213,6 +270,7 @@ def shaped(name, pattern, key):
 
 shaped('keepsake_blade', ['  I', ' I ', 'S  '], {'I': 'minecraft:iron_ingot', 'S': 'minecraft:stick'})
 shaped('ash_pike', ['  I', ' S ', 'S  '], {'I': 'minecraft:iron_ingot', 'S': 'minecraft:stick'})
+shaped('plank_buckler', [' P ', 'PIP', ' P '], {'P': 'minecraft:oak_planks', 'I': 'minecraft:iron_ingot'})
 shaped('hand_maul', ['CIC', ' S ', ' S '], {'C': 'minecraft:cobblestone', 'I': 'minecraft:iron_ingot', 'S': 'minecraft:stick'})
 
 print('ok', file=sys.stderr)

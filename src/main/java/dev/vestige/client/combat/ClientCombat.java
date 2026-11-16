@@ -32,6 +32,7 @@ public final class ClientCombat {
     private static long clientTick;
     private static int nextSeq = 1;
     private static boolean heavyWasDown;
+    private static boolean guardWasDown;
     private static int dodgeMoveTick = -1;
     private static RunningAction dodgeAction;
 
@@ -72,7 +73,36 @@ public final class ClientCombat {
             public boolean sprinting() {
                 return player.isSprinting();
             }
+
+            @Override
+            public Optional<String> guardAction() {
+                return Optional.of(PlayerCombat.guardActionFor(player));
+            }
+
+            @Override
+            public boolean canSpendResonance(float cost) {
+                return player.isCreative() || player.getData(dev.vestige.combat.CombatModule.RESONANCE).value() + 1.0e-4f >= cost;
+            }
+
+            @Override
+            public boolean riposteAvailable() {
+                return riposteTarget(player).isPresent();
+            }
         };
+    }
+
+    /** Client view of a critical target, from mirrored enemy actions (same geometry as the server). */
+    public static Optional<net.minecraft.world.entity.LivingEntity> riposteTarget(LocalPlayer player) {
+        return dev.vestige.combat.player.RiposteTargeting.find(player, e -> reeling(ClientActions.of(e)),
+                e -> !isAction(ClientActions.of(e), "riposted"));
+    }
+
+    static boolean reeling(RunningAction a) {
+        return isAction(a, "stagger") || isAction(a, "parried");
+    }
+
+    private static boolean isAction(RunningAction a, String name) {
+        return a != null && a.ref.action().equals(name);
     }
 
     /** Presses a combat input as if from the keyboard (also used by the dev test driver). */
@@ -85,7 +115,9 @@ public final class ClientCombat {
         Optional<PlayerCombatMachine.Start> started = MACHINE.input(input, seq, dirYaw, clientTick, context(player));
         // Send everything the machine accepted or buffered; inputs it rejects outright (no weapon,
         // no stamina) would be rejected by the server too.
-        boolean send = input == CombatInput.HEAVY_RELEASE || started.isPresent() || MACHINE.hasBuffered();
+        // Releases are always sent: the server must never keep a guard or charge the player let go of.
+        boolean send = input == CombatInput.HEAVY_RELEASE || input == CombatInput.GUARD_RELEASE
+                || started.isPresent() || MACHINE.hasBuffered();
         started.ifPresent(s -> onStarted(player, s.action()));
         if (send) {
             PacketDistributor.sendToServer(new CombatPayloads.Input(seq, input.ordinal(), dirYaw));
@@ -105,7 +137,11 @@ public final class ClientCombat {
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer player = mc.player;
         if (player == null || mc.screen != null || !armed()) {
+            if (guardWasDown && player != null) {
+                press(CombatInput.GUARD_RELEASE, Float.NaN);
+            }
             heavyWasDown = false;
+            guardWasDown = false;
             return;
         }
         while (mc.options.keyAttack.consumeClick()) {
@@ -121,6 +157,31 @@ public final class ClientCombat {
         while (CombatKeys.DODGE.consumeClick()) {
             press(CombatInput.ROLL, dodgeDirection(player));
         }
+        // Guard (RMB) unless the player is aiming at a block to use it (doors, chests, levers).
+        boolean guardDown = mc.options.keyUse.isDown() && !aimingAtUsableBlock(mc);
+        if (guardDown && !guardWasDown) {
+            press(CombatInput.GUARD_PRESS, Float.NaN);
+        } else if (!guardDown && guardWasDown) {
+            press(CombatInput.GUARD_RELEASE, Float.NaN);
+        }
+        guardWasDown = guardDown;
+        // Weapon art (F). Vanilla's offhand swap shares the key; it is suppressed while armed.
+        while (mc.options.keySwapOffhand.consumeClick()) {
+            // swallowed: F is the weapon art while armed
+        }
+        while (CombatKeys.ART.consumeClick()) {
+            press(CombatInput.ART, Float.NaN);
+        }
+    }
+
+    static boolean aimingAtUsableBlock(Minecraft mc) {
+        return !LockOn.locked() && mc.hitResult != null && mc.hitResult.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK;
+    }
+
+    /** True while the local guard is raised (for HUD and feedback). */
+    public static boolean guarding() {
+        RunningAction c = MACHINE.current();
+        return c != null && c.guarding();
     }
 
     /** Direction of movement input relative to facing (0 = forward, 90 = right), NaN if none. */
@@ -147,11 +208,27 @@ public final class ClientCombat {
         MACHINE.tick(clientTick, context(mc.player)).ifPresent(s -> onStarted(mc.player, s.action()));
         ClientActions.tick();
         PlayerAnimations.tick();
+        resonanceAura(mc);
+    }
+
+    /** Resonant players hum: faint musical notes drift around them (GDD §8.3). */
+    private static void resonanceAura(Minecraft mc) {
+        float r = mc.player.getData(dev.vestige.combat.CombatModule.RESONANCE).value();
+        if (r >= dev.vestige.combat.resonance.ResonanceRules.RESONANT && clientTick % (r >= 100f ? 4 : 10) == 0) {
+            var rnd = mc.player.getRandom();
+            double a = rnd.nextDouble() * Math.PI * 2;
+            mc.level.addParticle(net.minecraft.core.particles.ParticleTypes.NOTE, mc.player.getX() + Math.cos(a) * 0.7,
+                    mc.player.getY() + 0.6 + rnd.nextDouble() * 1.2, mc.player.getZ() + Math.sin(a) * 0.7, rnd.nextDouble(), 0, 0);
+        }
     }
 
     /** Suppress vanilla attack/mining/pick-block while armed; combat handles those buttons. */
     static void onInteraction(InputEvent.InteractionKeyMappingTriggered event) {
-        if (armed() && (event.isAttack() || event.isPickBlock())) {
+        if (!armed()) {
+            return;
+        }
+        boolean guardUse = event.isUseItem() && !aimingAtUsableBlock(Minecraft.getInstance());
+        if (event.isAttack() || event.isPickBlock() || guardUse) {
             event.setSwingHand(false);
             event.setCanceled(true);
         }
@@ -163,6 +240,14 @@ public final class ClientCombat {
         RunningAction current = MACHINE.current();
         boolean stunned = MACHINE.stunned(clientTick);
         if (current == null && !stunned) {
+            return;
+        }
+        if (current != null && current.kind == RunningAction.Kind.GUARD) {
+            // Guarding: a slow, deliberate walk (GDD §7.7).
+            event.getInput().forwardImpulse *= 0.35f;
+            event.getInput().leftImpulse *= 0.35f;
+            event.getInput().jumping = false;
+            player.setSprinting(false);
             return;
         }
         event.getInput().forwardImpulse = 0f;

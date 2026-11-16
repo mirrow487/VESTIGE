@@ -2,7 +2,6 @@ package dev.vestige.vitals;
 
 import dev.vestige.VestigeIds;
 import dev.vestige.core.VestigeModule;
-import java.util.function.Predicate;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -28,8 +27,8 @@ public final class VitalsModule implements VestigeModule {
                     .sync((holder, to) -> holder == to, Stamina.STREAM_CODEC)
                     .build());
 
-    /** Set by the combat module so stamina does not regenerate mid-action. */
-    private static volatile Predicate<Player> busyCheck = p -> false;
+    /** Set by the combat module: stamina regeneration multiplier (0 mid-action, 0.5 while guarding). */
+    private static volatile java.util.function.ToDoubleFunction<Player> regenFactor = p -> 1.0;
 
     @Override
     public String id() {
@@ -45,13 +44,13 @@ public final class VitalsModule implements VestigeModule {
         gameBus.addListener(VitalsModule::onHeal);
     }
 
-    public static void setBusyCheck(Predicate<Player> check) {
-        busyCheck = check;
+    public static void setRegenFactor(java.util.function.ToDoubleFunction<Player> factor) {
+        regenFactor = factor;
     }
 
     /** Server tick for one player; driven by the combat module's player tick. */
     public static void tickPlayer(ServerPlayer player) {
-        StaminaService.tick(player, busyCheck.test(player));
+        StaminaService.tick(player, regenFactor.applyAsDouble(player));
     }
 
     private static void onJoin(EntityJoinLevelEvent event) {

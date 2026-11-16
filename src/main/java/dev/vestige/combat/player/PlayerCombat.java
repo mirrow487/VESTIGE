@@ -3,6 +3,12 @@ package dev.vestige.combat.player;
 import dev.vestige.core.Net;
 import dev.vestige.combat.CombatData;
 import dev.vestige.combat.CombatModule;
+import dev.vestige.combat.CombatTarget;
+import dev.vestige.combat.action.ActionRef;
+import dev.vestige.combat.resonance.ResonanceRules;
+import dev.vestige.combat.resonance.ResonanceService;
+import dev.vestige.weapon.ShieldProfile;
+import dev.vestige.weapon.ShieldProfiles;
 import dev.vestige.combat.action.ActionPhase;
 import dev.vestige.combat.damage.CombatDamage;
 import dev.vestige.combat.damage.CombatDamageTypes;
@@ -74,7 +80,29 @@ public final class PlayerCombat {
             public boolean sprinting() {
                 return player.isSprinting();
             }
+
+            @Override
+            public Optional<String> guardAction() {
+                return Optional.of(guardActionFor(player));
+            }
+
+            @Override
+            public boolean canSpendResonance(float cost) {
+                return player.isCreative() || ResonanceService.get(player) + 1.0e-4f >= cost;
+            }
+
+            @Override
+            public boolean riposteAvailable() {
+                return RiposteTargeting.find(player).isPresent();
+            }
         };
+    }
+
+    /** Guard button: a buckler parries; a shield or the bare weapon guards (GDD §7.2, §7.7). Shared with the client. */
+    public static String guardActionFor(Player player) {
+        return ShieldProfiles.of(player.getOffhandItem(), player.level().isClientSide())
+                .map(s -> s.kind() == ShieldProfile.Kind.BUCKLER ? "parry_buckler" : "guard_shield")
+                .orElse("guard_weapon");
     }
 
     /** Entry point for a client input (also used directly by GameTests). */
@@ -89,7 +117,7 @@ public final class PlayerCombat {
         Optional<PlayerCombatMachine.Start> started = st.machine.input(input, seq, dirYaw, now, context(player));
         if (started.isPresent()) {
             begin(player, st, started.get().action());
-        } else if (input == CombatInput.HEAVY_RELEASE) {
+        } else if (input == CombatInput.HEAVY_RELEASE || input == CombatInput.GUARD_RELEASE) {
             if (wasHolding) {
                 Net.sendAround(player, new CombatPayloads.ActionHold(player.getId(), false), true);
             }
@@ -101,8 +129,20 @@ public final class PlayerCombat {
     private static void begin(ServerPlayer player, PlayerCombatState st, RunningAction action) {
         StaminaService.spend(player, action.def.power().stamina());
         st.actionItem = player.getMainHandItem().getItem();
-        if (action.kind != RunningAction.Kind.DODGE) {
+        if (action.kind != RunningAction.Kind.DODGE && action.kind != RunningAction.Kind.GUARD) {
             st.lastCombatTick = player.level().getGameTime();
+        }
+        action.def.art().ifPresent(art -> {
+            // Crescendo: a full Resonance bar empowers the art (GDD §8.3).
+            if (ResonanceRules.crescendo(ResonanceService.get(player))) {
+                action.damageBonus = ResonanceRules.CRESCENDO_ART_BONUS;
+            }
+            if (!player.isCreative()) {
+                ResonanceService.spend(player, art.cost());
+            }
+        });
+        if (action.kind == RunningAction.Kind.RIPOSTE) {
+            RiposteTargeting.find(player).ifPresent(target -> ((CombatTarget) target).beginCritical(player, action.def.total() + 6));
         }
         Net.sendAround(player, new CombatPayloads.ActionStart(
                 player.getId(), action.ref.toString(), action.seq, action.dirYaw, action.holding()), true);
@@ -125,7 +165,34 @@ public final class PlayerCombat {
         if (current != null && current.phase() == ActionPhase.ACTIVE && current.def.hit().isPresent()) {
             sweep(player, st, current);
         }
+        ResonanceService.tick(player, now - st.lastCombatTick);
         VitalsModule.tickPlayer(player);
+    }
+
+    /** Starts a server-originated action (a counter, a reaction) and tells clients. */
+    public static void adoptServerAction(ServerPlayer player, RunningAction action) {
+        PlayerCombatState st = state(player);
+        st.machine.adopt(action);
+        st.actionItem = player.getMainHandItem().getItem();
+        Net.sendAround(player, new CombatPayloads.ActionStart(player.getId(), action.ref.toString(), -1, Float.NaN, false), true);
+    }
+
+    /** Stamina ran out while blocking: the guard breaks and the player staggers. */
+    static void breakGuard(ServerPlayer player, RunningAction guard) {
+        PlayerCombatState st = state(player);
+        long now = player.level().getGameTime();
+        st.machine.interrupt(now, PlayerDefense.GUARD_BREAK_STUN);
+        Net.sendAround(player, new CombatPayloads.ActionEnd(player.getId(), CombatPayloads.EndReason.INTERRUPTED.ordinal(), guard.seq), true);
+        startReaction(player, st, "guard_break", now);
+    }
+
+    private static void startReaction(ServerPlayer player, PlayerCombatState st, String name, long now) {
+        CombatData.handle(false, CombatData.PLAYER_MOVESET).flatMap(h -> h.moveSet().action(name).map(def ->
+                new RunningAction(new ActionRef(h.id(), name), def, -1, Float.NaN, now, RunningAction.Kind.OTHER)))
+                .ifPresent(reaction -> {
+                    st.machine.adopt(reaction);
+                    Net.sendAround(player, new CombatPayloads.ActionStart(player.getId(), reaction.ref.toString(), -1, Float.NaN, false), true);
+                });
     }
 
     private static void sweep(ServerPlayer player, PlayerCombatState st, RunningAction action) {
@@ -133,9 +200,16 @@ public final class PlayerCombat {
         if (weapon.isEmpty()) {
             return;
         }
+        boolean resonant = ResonanceRules.resonant(ResonanceService.get(player));
+        float poiseScale = weapon.get().poiseDamage() * (resonant ? 1f + ResonanceRules.RESONANT_POISE_BONUS : 1f);
         for (Entity e : HitResolver.sweep(player, action, player.getYRot(), PlayerCombat::canHit)) {
             if (e instanceof LivingEntity living) {
-                CombatDamage.apply(player, living, action, weapon.get().attackRating(), weapon.get().poiseDamage(), CombatDamageTypes.WEAPON);
+                CombatDamage.Outcome out = CombatDamage.apply(player, living, action, weapon.get().attackRating(), poiseScale,
+                        action.damageBonus, CombatDamageTypes.WEAPON);
+                if (out.landed()) {
+                    ResonanceService.add(player, ResonanceRules.hitGain(weapon.get().weight())
+                            + (action.kind == RunningAction.Kind.RIPOSTE ? ResonanceRules.RIPOSTE : 0f));
+                }
             } else if (e.isAttackable()) {
                 player.attack(e); // boats, minecarts, item frames, end crystals keep vanilla behaviour
             }
@@ -159,7 +233,7 @@ public final class PlayerCombat {
      */
     public static boolean dodges(ServerPlayer player, DamageSource source) {
         RunningAction current = state(player).machine.current();
-        if (current == null || current.def.dodge().isEmpty()) {
+        if (current == null || (current.def.dodge().isEmpty() && !current.def.defense().invulnerable())) {
             return false;
         }
         boolean dodgeable = source.getEntity() != null || source.getDirectEntity() != null || source.is(DamageTypeTags.IS_EXPLOSION);
@@ -167,8 +241,12 @@ public final class PlayerCombat {
         if (!dodgeable || !current.invulnerable(tolerance)) {
             return false;
         }
+        if (current.def.defense().invulnerable()) {
+            return dodgeable;
+        }
         if (!current.perfectDodged && current.perfectDodgeWindow(tolerance)) {
             current.perfectDodged = true;
+            ResonanceService.add(player, ResonanceRules.PERFECT_DODGE);
             Net.send(player, new CombatPayloads.Event(CombatPayloads.EventKind.PERFECT_DODGE.ordinal(), player.getId()));
         }
         return true;
@@ -182,6 +260,7 @@ public final class PlayerCombat {
         PlayerCombatState st = state(player);
         long now = player.level().getGameTime();
         st.lastCombatTick = now;
+        ResonanceService.add(player, ResonanceRules.HIT_TAKEN);
         RunningAction current = st.machine.current();
         boolean armored = current != null && current.def.hyperarmor() && current.phase() == ActionPhase.WINDUP;
         if (armored && attack.def.inflictStagger() == 0) {
@@ -193,14 +272,7 @@ public final class PlayerCombat {
             Net.sendAround(player, new CombatPayloads.ActionEnd(
                     player.getId(), CombatPayloads.EndReason.INTERRUPTED.ordinal(), current.seq), true);
         }
-        String reaction = attack.def.inflictStagger() > DEFAULT_HIT_STUN ? "stagger" : "flinch";
-        CombatData.handle(false, CombatData.PLAYER_MOVESET).flatMap(h -> h.moveSet().action(reaction).map(def ->
-                new RunningAction(new dev.vestige.combat.action.ActionRef(h.id(), reaction), def, -1, Float.NaN, now, RunningAction.Kind.OTHER)))
-                .ifPresent(reactionAction -> {
-                    st.machine.adopt(reactionAction);
-                    Net.sendAround(player, new CombatPayloads.ActionStart(
-                            player.getId(), reactionAction.ref.toString(), -1, Float.NaN, false), true);
-                });
+        startReaction(player, st, attack.def.inflictStagger() > DEFAULT_HIT_STUN ? "stagger" : "flinch", now);
     }
 
     /** For tests: the item a stack must be to count as armed. */

@@ -32,6 +32,20 @@ public final class PlayerCombatMachine {
         boolean canSpendStamina();
 
         boolean sprinting();
+
+        /** Common-moveset action for the guard button: a parry (buckler) or a guard (shield or weapon). */
+        default Optional<String> guardAction() {
+            return Optional.empty();
+        }
+
+        default boolean canSpendResonance(float cost) {
+            return false;
+        }
+
+        /** True when a light attack should become a riposte or backstab (a valid target is in place). */
+        default boolean riposteAvailable() {
+            return false;
+        }
     }
 
     public record MoveSetHandle(ResourceLocation id, MoveSet moveSet) {
@@ -54,6 +68,7 @@ public final class PlayerCombatMachine {
     private float bufferedDir = Float.NaN;
     private long bufferedAt;
     private boolean bufferedHeavyReleased;
+    private boolean bufferedGuardReleased;
 
     public RunningAction current() {
         return current;
@@ -80,6 +95,14 @@ public final class PlayerCombatMachine {
             }
             return Optional.empty();
         }
+        if (input == CombatInput.GUARD_RELEASE) {
+            if (current != null && current.kind == RunningAction.Kind.GUARD && current.holding) {
+                current.release();
+            } else if (buffered == CombatInput.GUARD_PRESS) {
+                bufferedGuardReleased = true;
+            }
+            return Optional.empty();
+        }
         if (stunned(now)) {
             return Optional.empty();
         }
@@ -90,6 +113,7 @@ public final class PlayerCombatMachine {
             bufferedDir = dirYaw;
             bufferedAt = now;
             bufferedHeavyReleased = false;
+            bufferedGuardReleased = false;
         }
         return started;
     }
@@ -100,7 +124,15 @@ public final class PlayerCombatMachine {
             return true;
         }
         int e = current.elapsed();
-        if (input == CombatInput.ROLL) {
+        // A successful parry is cancellable the moment its impact freeze ends: riposte, art or dodge.
+        if (current.parrySucceeded && current.hitstop() == 0 && input != CombatInput.GUARD_PRESS) {
+            return true;
+        }
+        // A raised guard can be dropped into anything at once (attack, dodge, art).
+        if (current.kind == RunningAction.Kind.GUARD) {
+            return input != CombatInput.GUARD_PRESS;
+        }
+        if (input == CombatInput.ROLL || input == CombatInput.GUARD_PRESS) {
             return current.kind == RunningAction.Kind.DODGE ? e >= current.def.comboOpensAt() : e >= current.def.cancelOpensAt();
         }
         return e >= current.def.comboOpensAt();
@@ -115,11 +147,19 @@ public final class PlayerCombatMachine {
             case LIGHT -> ctx.weapon().flatMap(w -> startLight(w, seq, now, ctx));
             case HEAVY_PRESS -> ctx.weapon().flatMap(w -> w.moveSet().heavy()
                     .flatMap(name -> w.start(name, seq, Float.NaN, now, RunningAction.Kind.HEAVY)));
+            case GUARD_PRESS -> ctx.guardAction().flatMap(name -> ctx.common().flatMap(c -> c.moveSet().action(name).flatMap(def ->
+                    c.start(name, seq, Float.NaN, now, def.defense().guard() ? RunningAction.Kind.GUARD : RunningAction.Kind.PARRY))));
+            case ART -> ctx.weapon().flatMap(w -> w.moveSet().art().flatMap(name -> w.moveSet().action(name)
+                    .filter(def -> ctx.canSpendResonance(def.art().map(ActionDef.Art::cost).orElse(0f)))
+                    .flatMap(def -> w.start(name, seq, Float.NaN, now, RunningAction.Kind.ART))));
             default -> Optional.empty();
         };
         start.ifPresent(s -> {
             if (s.action().kind == RunningAction.Kind.HEAVY) {
                 s.action().holding = !(fromBuffer && bufferedHeavyReleased);
+            }
+            if (s.action().kind == RunningAction.Kind.GUARD) {
+                s.action().holding = !(fromBuffer && bufferedGuardReleased);
             }
             begin(s.action());
         });
@@ -128,6 +168,9 @@ public final class PlayerCombatMachine {
 
     private Optional<Start> startLight(MoveSetHandle w, int seq, long now, Context ctx) {
         MoveSet set = w.moveSet();
+        if (set.riposte().isPresent() && ctx.riposteAvailable()) {
+            return w.start(set.riposte().get(), seq, Float.NaN, now, RunningAction.Kind.RIPOSTE);
+        }
         boolean afterDodge = (current != null && current.kind == RunningAction.Kind.DODGE)
                 || (current == null && lastKind == RunningAction.Kind.DODGE && now - lastEndTick <= ROLLING_ATTACK_TICKS);
         if (afterDodge && set.rolling().isPresent()) {

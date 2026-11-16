@@ -11,7 +11,49 @@ import java.util.Optional;
  */
 public record ActionDef(Timing timing, Power power, boolean hyperarmor, Optional<HitShape> hit, Motion motion,
                         Optional<Telegraph> telegraph, String pose, Optional<Charge> charge, Optional<Dodge> dodge,
-                        int tracking, int inflictStagger) {
+                        int tracking, int inflictStagger, Defense defense, Optional<Art> art) {
+
+    /**
+     * Defensive properties (GDD §7.7).
+     *
+     * @param guard        while held at its peak, this action blocks frontal attacks (guard stats come from
+     *                     the shield or weapon in use)
+     * @param parry        ticks (from action start, inclusive/exclusive) during which parriable attacks are deflected
+     * @param invulnerable no damage at all for the whole action (ripostes)
+     */
+    public record Defense(boolean guard, Optional<Window> parry, boolean invulnerable) {
+        public static final Defense NONE = new Defense(false, Optional.empty(), false);
+        public static final Codec<Defense> CODEC = RecordCodecBuilder.create(i -> i.group(
+                Codec.BOOL.optionalFieldOf("guard", false).forGetter(Defense::guard),
+                Window.CODEC.optionalFieldOf("parry").forGetter(Defense::parry),
+                Codec.BOOL.optionalFieldOf("invulnerable", false).forGetter(Defense::invulnerable)
+        ).apply(i, Defense::new));
+    }
+
+    /** A tick window relative to the action start: start inclusive, end exclusive. */
+    public record Window(int start, int end) {
+        public static final Codec<Window> CODEC = RecordCodecBuilder.create(i -> i.group(
+                Codec.intRange(0, 200).fieldOf("start").forGetter(Window::start),
+                Codec.intRange(0, 200).fieldOf("end").forGetter(Window::end)
+        ).apply(i, Window::new));
+
+        public boolean contains(int tick) {
+            return tick >= start && tick < end;
+        }
+    }
+
+    /**
+     * A weapon art (GDD §7.11): costs Resonance; may chain into a counter when its parry window succeeds.
+     *
+     * @param cost    Resonance spent on start
+     * @param onParry action (same moveset) started automatically after a successful parry
+     */
+    public record Art(float cost, Optional<String> onParry) {
+        public static final Codec<Art> CODEC = RecordCodecBuilder.create(i -> i.group(
+                Codec.floatRange(0f, 100f).fieldOf("cost").forGetter(Art::cost),
+                Codec.STRING.optionalFieldOf("on_parry").forGetter(Art::onParry)
+        ).apply(i, Art::new));
+    }
 
     /**
      * @param comboWindow fraction of recovery after which the next attack may start (GDD: last 60%)
@@ -61,7 +103,7 @@ public record ActionDef(Timing timing, Power power, boolean hyperarmor, Optional
     /** Hold-to-charge heavy attack: windup pauses at its peak for up to {@code maxTicks}. */
     public record Charge(int maxTicks, float motionBonus, float poiseBonus) {
         public static final Codec<Charge> CODEC = RecordCodecBuilder.create(i -> i.group(
-                Codec.intRange(1, 200).fieldOf("max_ticks").forGetter(Charge::maxTicks),
+                Codec.intRange(1, 72000).fieldOf("max_ticks").forGetter(Charge::maxTicks),
                 Codec.FLOAT.fieldOf("motion_bonus").forGetter(Charge::motionBonus),
                 Codec.FLOAT.optionalFieldOf("poise_bonus", 0f).forGetter(Charge::poiseBonus)
         ).apply(i, Charge::new));
@@ -91,8 +133,20 @@ public record ActionDef(Timing timing, Power power, boolean hyperarmor, Optional
             Charge.CODEC.optionalFieldOf("charge").forGetter(ActionDef::charge),
             Dodge.CODEC.optionalFieldOf("dodge").forGetter(ActionDef::dodge),
             Codec.intRange(0, 360).optionalFieldOf("tracking", 30).forGetter(ActionDef::tracking),
-            Codec.intRange(0, 200).optionalFieldOf("inflict_stagger", 0).forGetter(ActionDef::inflictStagger)
+            Codec.intRange(0, 200).optionalFieldOf("inflict_stagger", 0).forGetter(ActionDef::inflictStagger),
+            Defense.CODEC.optionalFieldOf("defense", Defense.NONE).forGetter(ActionDef::defense),
+            Art.CODEC.optionalFieldOf("art").forGetter(ActionDef::art)
     ).apply(i, ActionDef::new));
+
+    /** Parriable attacks are those telegraphed with a white glint (GDD §7.12). */
+    public boolean parriable() {
+        return telegraph.map(t -> t.glint() == Telegraph.Glint.WHITE).orElse(true);
+    }
+
+    /** Grabs cannot be blocked; everything else can. */
+    public boolean blockable() {
+        return telegraph.map(t -> t.glint() != Telegraph.Glint.GRAB).orElse(true);
+    }
 
     public int total() {
         return timing.total();

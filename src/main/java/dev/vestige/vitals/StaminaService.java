@@ -27,7 +27,7 @@ public final class StaminaService {
     }
 
     /** Called every server tick for each player. */
-    static void tick(ServerPlayer player, boolean busy) {
+    static void tick(ServerPlayer player, double regenFactor) {
         Stamina s = get(player);
         float max = ServerConfig.STAMINA_BASE.get().floatValue();
         boolean changed = false;
@@ -38,7 +38,7 @@ public final class StaminaService {
         if (s.current() < s.max()) {
             long since = player.level().getGameTime() - s.lastSpendTick();
             float regen = StaminaRules.regenThisTick(since, ServerConfig.STAMINA_REGEN_DELAY_TICKS.get(),
-                    ServerConfig.STAMINA_REGEN_PER_SECOND.get(), busy, player.getFoodData().getFoodLevel());
+                    ServerConfig.STAMINA_REGEN_PER_SECOND.get() * regenFactor, regenFactor <= 0.0, player.getFoodData().getFoodLevel());
             if (regen > 0f) {
                 s.setCurrent(s.current() + regen);
                 changed = true;

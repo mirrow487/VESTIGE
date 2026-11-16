@@ -14,15 +14,19 @@ import java.util.Optional;
  * @param heavy    heavy attack (may be chargeable)
  * @param running  attack started while sprinting
  * @param rolling  attack started right after a dodge
+ * @param art      weapon art (Resonance cost)
+ * @param riposte  critical attack on a staggered/parried enemy in front, or from behind (backstab)
  */
 public record MoveSet(Map<String, ActionDef> actions, List<String> light, Optional<String> heavy,
-                      Optional<String> running, Optional<String> rolling) {
+                      Optional<String> running, Optional<String> rolling, Optional<String> art, Optional<String> riposte) {
     public static final Codec<MoveSet> CODEC = RecordCodecBuilder.create(i -> i.group(
             Codec.unboundedMap(Codec.STRING, ActionDef.CODEC).fieldOf("actions").forGetter(MoveSet::actions),
             Codec.STRING.listOf().optionalFieldOf("light", List.of()).forGetter(MoveSet::light),
             Codec.STRING.optionalFieldOf("heavy").forGetter(MoveSet::heavy),
             Codec.STRING.optionalFieldOf("running").forGetter(MoveSet::running),
-            Codec.STRING.optionalFieldOf("rolling").forGetter(MoveSet::rolling)
+            Codec.STRING.optionalFieldOf("rolling").forGetter(MoveSet::rolling),
+            Codec.STRING.optionalFieldOf("art").forGetter(MoveSet::art),
+            Codec.STRING.optionalFieldOf("riposte").forGetter(MoveSet::riposte)
     ).apply(i, MoveSet::new));
 
     public Optional<ActionDef> action(String name) {

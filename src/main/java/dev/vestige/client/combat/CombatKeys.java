@@ -25,6 +25,7 @@ public final class CombatKeys {
     public static final String CATEGORY = "key.categories.vestige";
     public static final KeyMapping HEAVY = new KeyMapping("key.vestige.heavy", COMBAT, InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_R, CATEGORY);
     public static final KeyMapping DODGE = new KeyMapping("key.vestige.dodge", COMBAT, InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_LEFT_ALT, CATEGORY);
+    public static final KeyMapping ART = new KeyMapping("key.vestige.art", COMBAT, InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_F, CATEGORY);
     public static final KeyMapping LOCK_ON = new KeyMapping("key.vestige.lock_on", COMBAT, InputConstants.Type.MOUSE, GLFW.GLFW_MOUSE_BUTTON_MIDDLE, CATEGORY);
 
     private CombatKeys() {}
@@ -33,5 +34,6 @@ public final class CombatKeys {
         event.register(HEAVY);
         event.register(DODGE);
         event.register(LOCK_ON);
+        event.register(ART);
     }
 }

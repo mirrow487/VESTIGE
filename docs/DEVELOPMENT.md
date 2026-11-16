@@ -37,12 +37,18 @@ The release JAR is `build/libs/vestige-<version>.jar`. It bundles GeckoLib and p
 scripts/client-driver.sh combat   # full combat scenario: HUD, attacks, rolls, weapons, lock-on, enemies, config UI
 scripts/client-driver.sh anim     # one attack, for quick animation iteration
 scripts/client-driver.sh calib    # single-axis test poses, to check rotation conventions
+scripts/client-driver.sh depth    # guards, live buckler parry, riposte, backstab, weapon arts, Resonance HUD
+scripts/client-driver.sh items    # 3D weapon models: in hand (front/side/first person), arts, parry frames, ground, inventory
+scripts/client-driver.sh models   # GeckoLib enemy models: poses front/side, death
+scripts/client-driver.sh lock     # lock-on reticle against a stationary target
 ```
 The driver (`client.devdriver.DevDriver`) only exists when `-Dvestige.dev.driver=<scenario>` is set. It presses real combat inputs, runs server commands, logs `DRIVER CHECK PASS/FAIL` lines and saves screenshots to `runs/client/screenshots/`. Each run uses a fresh copy of `runs/server/world`.
 
 ### Generated content
 - `python3 -I tools/gen_combat_data.py`: movesets, weapons, enemies, damage types, tags, spawns, loot, recipes (edit the numbers here, not the JSON).
-- `python3 -I tools/gen_textures.py`: item, mob, particle and HUD textures.
+- `python3 -I tools/gen_textures.py`: item sprites, particle and HUD textures.
+- `python3 -I tools/gen_models.py`: GeckoLib enemy geometry, animations and painted skins.
+- `python3 -I tools/gen_item_models.py`: 3D weapon item models and their part textures.
 - `python3 -I tools/gen_empty_structure.py <out.nbt> [size]`: GameTest templates.
 
 ### Headless client

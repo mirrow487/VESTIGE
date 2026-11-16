@@ -15,6 +15,8 @@ public final class WeaponModule implements VestigeModule {
     public static final DeferredItem<Item> KEEPSAKE_BLADE = ITEMS.registerSimpleItem("keepsake_blade", new Item.Properties().stacksTo(1));
     public static final DeferredItem<Item> ASH_PIKE = ITEMS.registerSimpleItem("ash_pike", new Item.Properties().stacksTo(1));
     public static final DeferredItem<Item> HAND_MAUL = ITEMS.registerSimpleItem("hand_maul", new Item.Properties().stacksTo(1));
+    /** Tier 0 parrying shield (GDD §10.2). */
+    public static final DeferredItem<Item> PLANK_BUCKLER = ITEMS.registerSimpleItem("plank_buckler", new Item.Properties().stacksTo(1));
 
     @Override
     public String id() {
@@ -25,5 +27,6 @@ public final class WeaponModule implements VestigeModule {
     public void init(IEventBus modBus, IEventBus gameBus) {
         ITEMS.register(modBus);
         WeaponProfiles.TABLE.register(modBus, gameBus);
+        ShieldProfiles.TABLE.register(modBus, gameBus);
     }
 }
