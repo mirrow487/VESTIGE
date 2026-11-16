@@ -6,5 +6,13 @@
   "moveset": "vestige:blade",
   "attack_rating": 38,
   "poise_damage": 0.9,
-  "weight": 2.5
+  "weight": 2.5,
+  "rarity": "common",
+  "damage": {
+    "slash": 38
+  },
+  "scaling": {
+    "strength": "D",
+    "dexterity": "D"
+  }
 }

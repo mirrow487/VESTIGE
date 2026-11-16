@@ -117,6 +117,7 @@ public final class WaylightService {
         player.setHealth(player.getMaxHealth());
         StaminaService.set(player, StaminaService.get(player).max());
         player.removeAllEffects();
+        dev.vestige.combat.status.StatusService.cure(player);
         PlayerCombat.playCommon(player, "rest");
         level.playSound(null, pos, SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.BLOCKS, 1f, 0.9f);
         level.playSound(null, pos, SoundEvents.FIRE_AMBIENT, SoundSource.BLOCKS, 1f, 1f);

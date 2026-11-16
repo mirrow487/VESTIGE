@@ -31,6 +31,13 @@ public final class CombatModule implements VestigeModule {
                     .sync((holder, to) -> holder == to, dev.vestige.combat.resonance.Resonance.STREAM_CODEC)
                     .build());
 
+    /** Status buildups and running statuses (GDD §7.10); saved, synced to the owning player. */
+    public static final Supplier<AttachmentType<dev.vestige.combat.status.StatusState>> STATUS = ATTACHMENTS.register("status",
+            () -> AttachmentType.builder(() -> new dev.vestige.combat.status.StatusState())
+                    .serialize(dev.vestige.combat.status.StatusState.CODEC)
+                    .sync((holder, to) -> holder == to, dev.vestige.combat.status.StatusState.STREAM_CODEC)
+                    .build());
+
     private static final DeferredRegister<net.minecraft.core.particles.ParticleType<?>> PARTICLES =
             DeferredRegister.create(net.minecraft.core.registries.Registries.PARTICLE_TYPE, VestigeIds.MOD_ID);
 
@@ -71,6 +78,11 @@ public final class CombatModule implements VestigeModule {
         modBus.addListener(CombatNetwork::register);
         gameBus.addListener(CombatModule::onPlayerTick);
         gameBus.addListener(CombatModule::onIncomingDamage);
+        gameBus.addListener((net.neoforged.neoforge.event.tick.EntityTickEvent.Post e) -> {
+            if (!e.getEntity().level().isClientSide && e.getEntity() instanceof net.minecraft.world.entity.LivingEntity living) {
+                dev.vestige.combat.status.StatusService.tick(living);
+            }
+        });
         // Stamina: no regeneration mid-action, half speed while guarding (GDD §8.2).
         VitalsModule.setRegenFactor(p -> {
             var current = PlayerCombat.state(p).machine().current();

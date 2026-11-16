@@ -22,13 +22,19 @@ def write(path, obj):
 
 def action(windup, active, recovery, pose, *, stamina=0, mv=1.0, poise=0, damage=0, hit=None, motion=None,
            telegraph=None, hyperarmor=False, charge=None, dodge=None, tracking=30, stagger=0,
-           combo=0.4, cancel=0.4, hitstop=3, guard=False, parry=None, invulnerable=False, art=None, effects=None):
+           combo=0.4, cancel=0.4, hitstop=3, guard=False, parry=None, invulnerable=False, art=None, effects=None, physical=None,
+           types=None):
     a = {
         'timing': {'windup': windup, 'active': active, 'recovery': recovery,
                    'combo_window': combo, 'cancel_window': cancel, 'hitstop': hitstop},
         'power': {'stamina': stamina, 'motion_value': mv, 'poise_damage': poise, 'damage': damage},
+        # GDD §7.10: physical = this action's physical type (a sword's thrust pierces); types = enemy damage split.
         'pose': pose,
     }
+    if physical:
+        a['power']['physical'] = physical
+    if types:
+        a['power']['types'] = types
     if hyperarmor:
         a['hyperarmor'] = True
     if hit:
@@ -105,6 +111,16 @@ write('vestige/vestige/movesets/player.json', moveset({
     # GDD §7.6 medium burden: 3.5 blocks, i-frames ticks 3-9, 16 stamina.
     'roll': action(0, 10, 6, 'roll', stamina=16, dodge={'iframe_start': 3, 'iframe_end': 10, 'distance': 3.5, 'move_ticks': 10},
                    combo=0.4, cancel=0.4, hitstop=0),
+    # Burden classes (GDD §7.6): light 4.5 blocks, i-frames 2-10, 14 stamina; heavy 2.5, 4-8, 20; overburdened: a stumble.
+    'roll_light': action(0, 10, 5, 'roll', stamina=14, dodge={'iframe_start': 2, 'iframe_end': 10, 'distance': 4.5, 'move_ticks': 10},
+                         combo=0.4, cancel=0.4, hitstop=0),
+    'roll_heavy': action(0, 11, 8, 'roll', stamina=20, dodge={'iframe_start': 4, 'iframe_end': 8, 'distance': 2.5, 'move_ticks': 11},
+                         combo=0.4, cancel=0.4, hitstop=0),
+    'roll_overburdened': action(0, 12, 12, 'roll_stumble', stamina=25, dodge={'iframe_start': 0, 'iframe_end': 0, 'distance': 1.2, 'move_ticks': 10},
+                                combo=0.4, cancel=0.4, hitstop=0),
+    # Hollow Ring (GDD §12.1): a short, quick blink-step with a long invulnerable window.
+    'roll_blink': action(0, 6, 4, 'blink_step', stamina=16, dodge={'iframe_start': 0, 'iframe_end': 7, 'distance': 2.8, 'move_ticks': 3},
+                         combo=0.4, cancel=0.4, hitstop=0),
     'backstep': action(0, 7, 5, 'backstep', stamina=10, dodge={'iframe_start': 2, 'iframe_end': 7, 'distance': 1.6, 'move_ticks': 7},
                        hitstop=0),
     'flinch': action(0, 0, 8, 'flinch', hitstop=0),
@@ -128,7 +144,7 @@ write('vestige/vestige/movesets/blade.json', moveset({
     'light_1': action(5, 3, 7, 'blade_slash_rl', stamina=12, mv=1.0, poise=8, hit=arc(2.6, 70, -70), motion={'active': 0.10}),
     'light_2': action(5, 3, 7, 'blade_slash_lr', stamina=12, mv=1.0, poise=8, hit=arc(2.6, -70, 70), motion={'active': 0.10}),
     'light_3': action(6, 3, 8, 'blade_overhead', stamina=12, mv=1.05, poise=9, hit=arc(2.7, 30, -20), motion={'active': 0.12}),
-    'light_4': action(6, 3, 10, 'blade_thrust', stamina=13, mv=1.15, poise=10, hit=thrust(3.0, 0.5), motion={'active': 0.18}),
+    'light_4': action(6, 3, 10, 'blade_thrust', physical='pierce', stamina=13, mv=1.15, poise=10, hit=thrust(3.0, 0.5), motion={'active': 0.18}),
     'heavy': action(10, 3, 12, 'blade_heavy', stamina=22, mv=1.45, poise=18, hit=arc(2.9, 80, -60), motion={'active': 0.15},
                     hyperarmor=True, charge={'max_ticks': 14, 'motion_bonus': 0.45, 'poise_bonus': 10}, hitstop=5),
     'running': action(6, 3, 9, 'blade_running', stamina=14, mv=1.1, poise=10, hit=arc(2.8, 50, -50),
@@ -140,7 +156,7 @@ write('vestige/vestige/movesets/blade.json', moveset({
     'riposte_counter': action(2, 3, 12, 'blade_counter', mv=2.2, poise=30, hit=arc(2.8, 60, -60), motion={'active': 0.2},
                               hitstop=6, art={'cost': 0}),
     # Critical (riposte / backstab), GDD §7.5 motion value 3.0.
-    'riposte': action(7, 3, 16, 'blade_riposte', mv=3.0, hit=thrust(2.8, 0.6), invulnerable=True, hitstop=9),
+    'riposte': action(7, 3, 16, 'blade_riposte', physical='pierce', mv=3.0, hit=thrust(2.8, 0.6), invulnerable=True, hitstop=9),
 }, light=['light_1', 'light_2', 'light_3', 'light_4'], heavy='heavy', running='running', rolling='rolling',
    art='riposte_stance', riposte='riposte'))
 
@@ -182,18 +198,18 @@ write('vestige/vestige/movesets/maul.json', moveset({
 write('vestige/vestige/movesets/fang.json', moveset({
     'light_1': action(3, 2, 5, 'fang_slash_r', stamina=8, mv=0.8, poise=4, hit=arc(2.1, 55, -55), motion={'active': 0.12}, hitstop=2),
     'light_2': action(3, 2, 5, 'fang_slash_l', stamina=8, mv=0.8, poise=4, hit=arc(2.1, -55, 55), motion={'active': 0.12}, hitstop=2),
-    'light_3': action(3, 2, 6, 'fang_stab', stamina=8, mv=0.85, poise=5, hit=thrust(2.4, 0.4), motion={'active': 0.2}, hitstop=2),
+    'light_3': action(3, 2, 6, 'fang_stab', physical='pierce', stamina=8, mv=0.85, poise=5, hit=thrust(2.4, 0.4), motion={'active': 0.2}, hitstop=2),
     'light_4': action(3, 2, 5, 'fang_slash_r', stamina=8, mv=0.85, poise=5, hit=arc(2.1, 55, -55), motion={'active': 0.12}, hitstop=2),
     'light_5': action(4, 4, 9, 'fang_spin', stamina=10, mv=1.0, poise=8, hit=arc(2.3, -170, 170), motion={'active': 0.08}, hitstop=3),
-    'heavy': action(7, 3, 9, 'fang_lunge', stamina=16, mv=1.3, poise=10, hit=thrust(2.9, 0.45), motion={'active': 0.4},
+    'heavy': action(7, 3, 9, 'fang_lunge', physical='pierce', stamina=16, mv=1.3, poise=10, hit=thrust(2.9, 0.45), motion={'active': 0.4},
                     hyperarmor=True, charge={'max_ticks': 10, 'motion_bonus': 0.4, 'poise_bonus': 5}, hitstop=4),
-    'running': action(4, 2, 8, 'fang_slide', stamina=10, mv=0.95, poise=6, hit=thrust(2.6, 0.45),
+    'running': action(4, 2, 8, 'fang_slide', physical='pierce', stamina=10, mv=0.95, poise=6, hit=thrust(2.6, 0.45),
                       motion={'windup': 0.3, 'active': 0.4}, hitstop=2),
     'rolling': action(2, 2, 6, 'fang_slash_r', stamina=7, mv=0.75, poise=4, hit=arc(2.1, 55, -55), hitstop=2),
     # Art: Quickstep (GDD §7.11). A short i-frame blink; the next hit within 1 s is a critical.
     'quickstep': action(0, 6, 5, 'fang_quickstep', stamina=8, dodge={'iframe_start': 0, 'iframe_end': 6, 'distance': 3.2, 'move_ticks': 5},
                         hitstop=0, art={'cost': 15}, effects={'keen': 20}),
-    'riposte': action(5, 3, 14, 'fang_riposte', mv=3.5, hit=thrust(2.4, 0.6), invulnerable=True, hitstop=8),
+    'riposte': action(5, 3, 14, 'fang_riposte', physical='pierce', mv=3.5, hit=thrust(2.4, 0.6), invulnerable=True, hitstop=8),
 }, light=['light_1', 'light_2', 'light_3', 'light_4', 'light_5'], heavy='heavy', running='running', rolling='rolling',
    art='quickstep', riposte='riposte'))
 
@@ -201,16 +217,16 @@ write('vestige/vestige/movesets/fang.json', moveset({
 write('vestige/vestige/movesets/greatblade.json', moveset({
     'light_1': action(12, 4, 14, 'gb_sweep_r', stamina=22, mv=1.2, poise=22, hit=arc(3.3, 100, -80), motion={'active': 0.1}, hitstop=5),
     'light_2': action(12, 4, 14, 'gb_sweep_l', stamina=22, mv=1.25, poise=22, hit=arc(3.3, -100, 80), motion={'active': 0.1}, hitstop=5),
-    'light_3': action(13, 4, 16, 'gb_overhead', stamina=24, mv=1.35, poise=30, hit=arc(3.4, 20, -15), motion={'active': 0.12}, hitstop=6),
+    'light_3': action(13, 4, 16, 'gb_overhead', physical='strike', stamina=24, mv=1.35, poise=30, hit=arc(3.4, 20, -15), motion={'active': 0.12}, hitstop=6),
     'heavy': action(18, 5, 18, 'gb_heavy', stamina=36, mv=1.6, poise=40, hit=arc(3.5, 170, -170), hyperarmor=True,
                     charge={'max_ticks': 16, 'motion_bonus': 0.6, 'poise_bonus': 20}, hitstop=7),
     'running': action(12, 4, 15, 'gb_running', stamina=24, mv=1.3, poise=28, hit=arc(3.3, 25, -25),
                       motion={'windup': 0.3, 'active': 0.15}, hitstop=6),
     'rolling': action(10, 4, 14, 'gb_rolling', stamina=20, mv=1.1, poise=22, hit=arc(3.1, -30, 40), hitstop=5),
     # Art: Cleaving Wake. An overhead slam; a shockwave runs 7 blocks along the ground ahead.
-    'cleaving_wake': action(18, 6, 18, 'gb_cleaving_wake', stamina=26, mv=1.5, poise=45, hit=thrust(7.0, 0.8, y_min=-0.5, y_max=1.4),
+    'cleaving_wake': action(18, 6, 18, 'gb_cleaving_wake', physical='strike', stamina=26, mv=1.5, poise=45, hit=thrust(7.0, 0.8, y_min=-0.5, y_max=1.4),
                             hyperarmor=True, hitstop=6, art={'cost': 35}, effects={'fx': 'wake'}),
-    'riposte': action(10, 4, 18, 'gb_riposte', mv=2.8, hit=thrust(2.9, 0.6), invulnerable=True, hitstop=10),
+    'riposte': action(10, 4, 18, 'gb_riposte', physical='pierce', mv=2.8, hit=thrust(2.9, 0.6), invulnerable=True, hitstop=10),
 }, light=['light_1', 'light_2', 'light_3'], heavy='heavy', running='running', rolling='rolling',
    art='cleaving_wake', riposte='riposte'))
 
@@ -226,7 +242,7 @@ write('vestige/vestige/movesets/censer.json', moveset({
     'rolling': action(6, 5, 10, 'censer_swing_l', stamina=13, mv=0.95, poise=11, hit=arc(3.0, -110, 70)),
     # Art: Smolder Wake. A spin, then an incense cloud wider than the spin burns everything inside for 5 s.
     'smolder_wake': action(10, 8, 14, 'censer_smolder', stamina=20, mv=1.2, poise=20, hit=circle(3.2, 0.0), hyperarmor=True, hitstop=3,
-                           art={'cost': 25}, effects={'cloud': {'radius': 4.0, 'duration': 100, 'interval': 10, 'motion_value': 0.18}}),
+                           art={'cost': 25}, effects={'cloud': {'radius': 4.0, 'duration': 100, 'interval': 10, 'motion_value': 0.3}}),
     'riposte': action(9, 4, 16, 'censer_riposte', mv=2.8, hit=arc(2.7, 25, -25), invulnerable=True, hitstop=9),
 }, light=['light_1', 'light_2', 'light_3'], heavy='heavy', running='running', rolling='rolling',
    art='smolder_wake', riposte='riposte'))
@@ -241,7 +257,7 @@ write('vestige/vestige/movesets/longbow.json', moveset({
     # Art: Pinning Shot. A braced full draw; the arrow roots the target for 2 s.
     'pinning_shot': action(16, 1, 10, 'bow_pinning', stamina=14, mv=1.6, poise=20, stagger=40, hitstop=5,
                            art={'cost': 25}, effects={'projectile': {'speed': 3.2}}),
-    'riposte': action(6, 3, 14, 'bow_riposte', mv=2.4, hit=arc(2.4, 40, -40), invulnerable=True, hitstop=8),
+    'riposte': action(6, 3, 14, 'bow_riposte', physical='strike', mv=2.4, hit=arc(2.4, 40, -40), invulnerable=True, hitstop=8),
 }, light=['quick_shot'], heavy='aimed_shot', running='quick_shot', rolling='quick_shot',
    art='pinning_shot', riposte='riposte'))
 
@@ -253,16 +269,16 @@ write('vestige/vestige/movesets/bell.json', moveset({
     # Art: Toll. A great expanding ring that interrupts everything it passes (forced stagger).
     'great_toll': action(12, 8, 14, 'bell_great_toll', stamina=16, mv=1.2, poise=60, stagger=25, hit=ring(7.0, 1.5, y_max=2.4),
                          hyperarmor=True, hitstop=4, art={'cost': 20}),
-    'riposte': action(6, 3, 14, 'bell_riposte', mv=2.6, hit=circle(1.8, 1.0, 2.2), invulnerable=True, hitstop=9),
+    'riposte': action(6, 3, 14, 'bell_riposte', physical='strike', mv=2.6, hit=circle(1.8, 1.0, 2.2), invulnerable=True, hitstop=9),
 }, light=['peal'], heavy='toll', running='peal', rolling='peal', art='great_toll', riposte='riposte'))
 
 # ---------------------------------------------------------------- enemies (GDD §18.1). Every attack has >= 9 windup ticks.
 write('vestige/vestige/movesets/hollowed.json', moveset({
     'swipe': action(14, 3, 14, 'hollowed_swipe', damage=22, hit=arc(2.4, 60, -60), motion={'active': 0.15},
                     telegraph={'glint': 'white', 'lead': 6}, tracking=25),
-    'backhand': action(9, 3, 16, 'hollowed_backhand', damage=18, hit=arc(2.3, -60, 60), motion={'active': 0.12},
+    'backhand': action(9, 3, 16, 'hollowed_backhand', damage=18, physical='strike', hit=arc(2.3, -60, 60), motion={'active': 0.12},
                        telegraph={'glint': 'white', 'lead': 5}, tracking=20),
-    'lunge_grab': action(18, 4, 22, 'hollowed_lunge', damage=32, hit=thrust(2.0, 0.6), motion={'active': 0.45},
+    'lunge_grab': action(18, 4, 22, 'hollowed_lunge', damage=32, physical='strike', hit=thrust(2.0, 0.6), motion={'active': 0.45},
                          telegraph={'glint': 'grab', 'lead': 8}, tracking=20, stagger=20),
     'flinch': action(0, 0, 10, 'flinch', hitstop=0),
     'stagger': action(0, 0, 40, 'stagger', hitstop=0),
@@ -270,9 +286,9 @@ write('vestige/vestige/movesets/hollowed.json', moveset({
     'riposted': action(0, 0, 50, 'riposted', hitstop=0),
 }))
 write('vestige/vestige/movesets/hollowed_brute.json', moveset({
-    'overhead_slam': action(22, 3, 26, 'brute_slam', damage=40, hit=circle(1.8, 1.6), hyperarmor=True, tracking=15, hitstop=5,
+    'overhead_slam': action(22, 3, 26, 'brute_slam', damage=40, physical='strike', hit=circle(1.8, 1.6), hyperarmor=True, tracking=15, hitstop=5,
                             telegraph={'glint': 'red', 'lead': 8, 'decal': {'type': 'circle', 'radius': 1.8, 'offset': 1.6}}),
-    'sweep': action(16, 4, 18, 'brute_sweep', damage=30, hit=arc(3.0, 80, -80), hyperarmor=True, tracking=20,
+    'sweep': action(16, 4, 18, 'brute_sweep', damage=30, physical='strike', hit=arc(3.0, 80, -80), hyperarmor=True, tracking=20,
                     telegraph={'glint': 'white', 'lead': 6}),
     'flinch': action(0, 0, 12, 'flinch', hitstop=0),
     'stagger': action(0, 0, 50, 'stagger', hitstop=0),
@@ -283,12 +299,12 @@ write('vestige/vestige/movesets/hollowed_brute.json', moveset({
 
 # Tolling Ram (GDD §18.1): teaches rolling sideways. The charge only aims during its pawing windup.
 write('vestige/vestige/movesets/tolling_ram.json', moveset({
-    'butt_charge': action(18, 14, 22, 'ram_charge', damage=34, hit=thrust(1.6, 0.8, y_max=1.6), motion={'active': 0.6},
+    'butt_charge': action(18, 14, 22, 'ram_charge', damage=34, physical='strike', hit=thrust(1.6, 0.8, y_max=1.6), motion={'active': 0.6},
                           telegraph={'glint': 'red', 'lead': 6, 'decal': {'type': 'thrust', 'length': 9.0, 'width': 1.6}},
                           tracking=12, stagger=20, hyperarmor=True, hitstop=5),
-    'toll_ring': action(16, 10, 16, 'ram_toll', damage=22, hit=ring(5.0, 1.0), hyperarmor=True, tracking=0, hitstop=2,
+    'toll_ring': action(16, 10, 16, 'ram_toll', damage=22, types={'resonance': 0.7, 'strike': 0.3}, hit=ring(5.0, 1.0), hyperarmor=True, tracking=0, hitstop=2,
                         telegraph={'glint': 'red', 'lead': 6, 'decal': {'type': 'circle', 'radius': 5.0, 'offset': 0.0}}),
-    'headbutt': action(11, 3, 14, 'ram_headbutt', damage=24, hit=thrust(2.0, 0.7), motion={'active': 0.25},
+    'headbutt': action(11, 3, 14, 'ram_headbutt', damage=24, physical='strike', hit=thrust(2.0, 0.7), motion={'active': 0.25},
                        telegraph={'glint': 'white', 'lead': 5}, tracking=25),
     'flinch': action(0, 0, 10, 'ram_flinch', hitstop=0),
     'stagger': action(0, 0, 45, 'ram_stagger', hitstop=0),
@@ -298,6 +314,8 @@ write('vestige/vestige/movesets/tolling_ram.json', moveset({
 
 write('vestige/vestige/enemies/hollowed.json', {
     'moveset': 'vestige:hollowed', 'health': 90, 'defense': 10, 'poise': 20, 'poise_regen_delay': 60, 'glim': 32,
+    # Pale-touched husks: dry (Cinder ×1.25), hollow inside (they shrug off Hush), smitten by Radiance (family).
+    'family': 'pale', 'weaknesses': {'cinder': 1.25, 'hush': 0.6}, 'status_resist': {'hushed': 0.5},
     'engage': {'min': 1.3, 'max': 2.4, 'strafe_speed': 0.45, 'pause_min': 12, 'pause_max': 32},
     'attacks': [
         {'action': 'swipe', 'weight': 4, 'max_range': 2.6, 'cooldown': 30, 'follow_up': 'backhand', 'follow_chance': 0.45},
@@ -306,6 +324,10 @@ write('vestige/vestige/enemies/hollowed.json', {
 })
 write('vestige/vestige/enemies/hollowed_brute.json', {
     'moveset': 'vestige:hollowed_brute', 'health': 220, 'defense': 25, 'poise': 60, 'poise_regen_delay': 80, 'glim': 110,
+    # Iron-wrapped: blades glance off (Slash 34), a hammer caves it in (Strike 16).
+    'family': 'pale', 'defenses': {'slash': 34, 'strike': 16, 'pierce': 28, 'cinder': 14, 'resonance': 18, 'hush': 10, 'void': 14,
+                                   'radiance': 12},
+    'weaknesses': {'cinder': 1.15, 'hush': 0.6}, 'status_resist': {'rend': 0.4, 'hushed': 0.5},
     'engage': {'min': 1.8, 'max': 2.8, 'strafe_speed': 0.35, 'pause_min': 20, 'pause_max': 40},
     'attacks': [
         {'action': 'overhead_slam', 'weight': 3, 'max_range': 3.2, 'cooldown': 60},
@@ -315,6 +337,9 @@ write('vestige/vestige/enemies/hollowed_brute.json', {
 
 write('vestige/vestige/enemies/tolling_ram.json', {
     'moveset': 'vestige:tolling_ram', 'health': 140, 'defense': 15, 'poise': 35, 'poise_regen_delay': 70, 'glim': 64,
+    # A thick skull and fleece (Strike 24), soft flanks for a spear (Pierce 8); the wool catches fire; bells are its own voice.
+    'family': 'beast', 'defenses': {'slash': 14, 'strike': 24, 'pierce': 8, 'cinder': 8, 'resonance': 20, 'hush': 9, 'void': 9, 'radiance': 9},
+    'weaknesses': {'cinder': 1.2, 'resonance': 0.7},
     'engage': {'min': 2.0, 'max': 7.0, 'strafe_speed': 0.4, 'pause_min': 18, 'pause_max': 40},
     'attacks': [
         {'action': 'butt_charge', 'weight': 4, 'min_range': 3.5, 'max_range': 9.0, 'cooldown': 90},
@@ -324,21 +349,41 @@ write('vestige/vestige/enemies/tolling_ram.json', {
 })
 
 # ---------------------------------------------------------------- weapons (GDD §10.2 tier 0 + vanilla swords as Common blades)
-def weapon(name, items, cls, moveset_id, ar, weight, poise=1.0):
-    write('vestige/vestige/weapons/%s.json' % name, {'items': items, 'class': cls, 'moveset': moveset_id,
-                                                     'attack_rating': ar, 'poise_damage': poise, 'weight': weight})
+def weapon(name, items, cls, moveset_id, ar, weight, poise=1.0, damage=None, scaling=None, req=None, status=None, rarity='common'):
+    w = {'items': items, 'class': cls, 'moveset': moveset_id, 'attack_rating': ar, 'poise_damage': poise, 'weight': weight,
+         'rarity': rarity}
+    if damage:
+        w['damage'] = damage
+    if scaling:
+        w['scaling'] = scaling
+    if req:
+        w['requirements'] = req
+    if status:
+        w['status'] = status
+    write('vestige/vestige/weapons/%s.json' % name, w)
 
 
-weapon('keepsake_blade', ['vestige:keepsake_blade'], 'blade', 'vestige:blade', 60, 3.0)
-weapon('ash_pike', ['vestige:ash_pike'], 'pike', 'vestige:pike', 55, 4.5)
-weapon('hand_maul', ['vestige:hand_maul'], 'maul', 'vestige:maul', 72, 7.0)
-weapon('taper_fang', ['vestige:taper_fang'], 'fang', 'vestige:fang', 62, 1.5)
-weapon('wickiron_greatblade', ['vestige:wickiron_greatblade'], 'greatblade', 'vestige:greatblade', 96, 11.0)
-weapon('chandlers_censer', ['vestige:chandlers_censer'], 'censer', 'vestige:censer', 74, 5.0)
-weapon('hunting_bow', ['vestige:hunting_bow'], 'longbow', 'vestige:longbow', 58, 2.5)
-weapon('handbell', ['vestige:handbell'], 'bell', 'vestige:bell', 60, 2.0)
+# GDD §7.10 / §8.6: damage per type, scaling grades (S-E) and requirements (below: AR x0.6).
+weapon('keepsake_blade', ['vestige:keepsake_blade'], 'blade', 'vestige:blade', 60, 3.0, damage={'slash': 60},
+       scaling={'strength': 'D', 'dexterity': 'C'})
+weapon('ash_pike', ['vestige:ash_pike'], 'pike', 'vestige:pike', 55, 4.5, damage={'pierce': 55},
+       scaling={'strength': 'D', 'dexterity': 'C'}, req={'dexterity': 11})
+weapon('hand_maul', ['vestige:hand_maul'], 'maul', 'vestige:maul', 72, 7.0, damage={'strike': 72},
+       scaling={'strength': 'B'}, req={'strength': 14})
+weapon('taper_fang', ['vestige:taper_fang'], 'fang', 'vestige:fang', 62, 1.5, damage={'slash': 44, 'cinder': 18},
+       scaling={'dexterity': 'B', 'lamplight': 'D'}, req={'dexterity': 13}, status={'rend': 6}, rarity='uncommon')
+weapon('wickiron_greatblade', ['vestige:wickiron_greatblade'], 'greatblade', 'vestige:greatblade', 96, 11.0,
+       damage={'slash': 76, 'cinder': 24}, scaling={'strength': 'B', 'dexterity': 'D', 'lamplight': 'E'},
+       req={'strength': 20, 'dexterity': 12}, rarity='rare')
+weapon('chandlers_censer', ['vestige:chandlers_censer'], 'censer', 'vestige:censer', 74, 5.0, damage={'strike': 48, 'cinder': 30},
+       scaling={'strength': 'C', 'lamplight': 'C'}, req={'strength': 12, 'lamplight': 12}, status={'scorch': 8}, rarity='rare')
+weapon('hunting_bow', ['vestige:hunting_bow'], 'longbow', 'vestige:longbow', 58, 2.5, damage={'pierce': 58},
+       scaling={'dexterity': 'B'}, req={'dexterity': 12})
+weapon('handbell', ['vestige:handbell'], 'bell', 'vestige:bell', 60, 2.0, damage={'resonance': 54, 'strike': 8},
+       scaling={'cadence': 'B', 'strength': 'E'}, req={'cadence': 14}, rarity='uncommon')
 for mat, ar, w in [('wooden', 30, 2.0), ('stone', 40, 3.0), ('golden', 38, 2.5), ('iron', 52, 3.0), ('diamond', 66, 3.5), ('netherite', 80, 4.0)]:
-    weapon('vanilla_%s_sword' % mat, ['minecraft:%s_sword' % mat], 'blade', 'vestige:blade', ar, w, 0.9)
+    weapon('vanilla_%s_sword' % mat, ['minecraft:%s_sword' % mat], 'blade', 'vestige:blade', ar, w, 0.9, damage={'slash': ar},
+           scaling={'strength': 'D', 'dexterity': 'D'})
 
 # ---------------------------------------------------------------- shields (GDD §7.7)
 def shield(name, items, kind, absorption, stability, weight):
@@ -352,9 +397,9 @@ shield('iron_kite_shield', ['vestige:iron_kite_shield'], 'kite', 0.9, 60, 4.5)
 shield('timber_bulwark', ['vestige:timber_bulwark'], 'bulwark', 1.0, 78, 9.0)
 
 # ---------------------------------------------------------------- damage types and tags
-for name, msg in [('weapon', 'vestige.weapon'), ('enemy_attack', 'vestige.enemy')]:
+for name, msg in [('weapon', 'vestige.weapon'), ('enemy_attack', 'vestige.enemy'), ('status', 'vestige.status')]:
     write('vestige/damage_type/%s.json' % name, {'exhaustion': 0.1, 'message_id': msg, 'scaling': 'never'})
-types = ['vestige:weapon', 'vestige:enemy_attack']
+types = ['vestige:weapon', 'vestige:enemy_attack', 'vestige:status']
 for tag in ['bypasses_armor', 'bypasses_cooldown', 'no_knockback']:
     write('minecraft/tags/damage_type/%s.json' % tag, {'replace': False, 'values': types})
 write('vestige/tags/damage_type/native_scale.json', {'values': types})
@@ -390,8 +435,14 @@ def drop(item, lo, hi):
 
 
 entity_loot('hollowed', [drop('minecraft:bone', 0, 1), drop('minecraft:string', 0, 2)])
-entity_loot('tolling_ram', [drop('minecraft:mutton', 1, 3), drop('minecraft:white_wool', 1, 2), drop('minecraft:leather', 0, 1)])
-entity_loot('hollowed_brute', [drop('minecraft:bone', 1, 2), drop('minecraft:iron_nugget', 0, 3)])
+def chance_drop(item, p):
+    return {'rolls': 1, 'conditions': [{'condition': 'minecraft:killed_by_player'}, {'condition': 'minecraft:random_chance', 'chance': p}],
+            'entries': [{'type': 'minecraft:item', 'name': item}]}
+
+
+entity_loot('tolling_ram', [drop('minecraft:mutton', 1, 3), drop('minecraft:white_wool', 1, 2), drop('minecraft:leather', 0, 1),
+                            chance_drop('vestige:kindling_ember', 0.08)])
+entity_loot('hollowed_brute', [drop('minecraft:bone', 1, 2), drop('minecraft:iron_nugget', 0, 3), chance_drop('vestige:kindling_ember', 0.15)])
 
 # ---------------------------------------------------------------- recipes (tier 0 is craftable; Wren also offers one as a keepsake, GDD §4.5)
 def shaped(name, pattern, key):

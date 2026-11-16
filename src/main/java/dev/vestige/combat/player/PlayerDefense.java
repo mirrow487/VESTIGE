@@ -69,6 +69,9 @@ public final class PlayerDefense {
             ct.receiveParry(player);
         }
         ResonanceService.add(player, ResonanceRules.PARRY);
+        if (dev.vestige.stats.Stats.of(player).has(dev.vestige.stats.Perks.WAXEN_RING)) {
+            player.setHealth(Math.min(player.getMaxHealth(), player.getHealth() + player.getMaxHealth() * 0.05f)); // Waxen Ring
+        }
         PlayerCombat.state(player).lastCombatTick = player.level().getGameTime();
         var at = attacker.getBoundingBox().getCenter().add(player.getBoundingBox().getCenter()).scale(0.5);
         Net.sendAround(player, new CombatPayloads.HitFeedback(attacker.getId(), player.getId(), (float) at.x, (float) at.y + 0.3f,

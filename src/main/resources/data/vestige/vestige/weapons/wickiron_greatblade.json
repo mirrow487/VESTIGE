@@ -6,5 +6,19 @@
   "moveset": "vestige:greatblade",
   "attack_rating": 96,
   "poise_damage": 1.0,
-  "weight": 11.0
+  "weight": 11.0,
+  "rarity": "rare",
+  "damage": {
+    "slash": 76,
+    "cinder": 24
+  },
+  "scaling": {
+    "strength": "B",
+    "dexterity": "D",
+    "lamplight": "E"
+  },
+  "requirements": {
+    "strength": 20,
+    "dexterity": 12
+  }
 }

@@ -1,0 +1,22 @@
+{
+  "items": [
+    "vestige:bellbronze_mail"
+  ],
+  "slot": "chest",
+  "set": "vestige:bellbronze",
+  "weight": 7.8,
+  "stats": {
+    "poise": 8,
+    "absorption": {
+      "slash": 0.12,
+      "strike": 0.12,
+      "pierce": 0.12,
+      "resonance": 0.13,
+      "cinder": 0.07,
+      "hush": 0.05,
+      "void": 0.05,
+      "radiance": 0.06
+    }
+  },
+  "rarity": "uncommon"
+}

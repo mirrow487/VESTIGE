@@ -52,6 +52,11 @@ public final class PlayerCombatMachine {
             return true;
         }
 
+        /** The roll for the player's burden (GDD §7.6): roll_light, roll, roll_heavy, roll_overburdened, or a ring's blink. */
+        default String rollAction() {
+            return "roll";
+        }
+
         /** True when the Wick Flask has a charge left (otherwise the drink is an empty shake). */
         default boolean hasFlaskCharge() {
             return false;
@@ -155,7 +160,8 @@ public final class PlayerCombatMachine {
         }
         int comboBefore = comboIndex;
         Optional<Start> start = switch (input) {
-            case ROLL -> ctx.common().flatMap(c -> c.start(Float.isNaN(dirYaw) ? "backstep" : "roll", seq, dirYaw, now, RunningAction.Kind.DODGE));
+            case ROLL -> ctx.common().flatMap(c -> c.start(Float.isNaN(dirYaw) ? "backstep" : ctx.rollAction(), seq, dirYaw, now,
+                    RunningAction.Kind.DODGE));
             case LIGHT -> ctx.weapon().flatMap(w -> startLight(w, seq, now, ctx));
             case HEAVY_PRESS -> ctx.weapon().flatMap(w -> w.moveSet().heavy()
                     .flatMap(name -> w.start(name, seq, Float.NaN, now, RunningAction.Kind.HEAVY)));

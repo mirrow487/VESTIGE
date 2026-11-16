@@ -1,0 +1,12 @@
+{
+  "items": [
+    "vestige:lightfoot_feather"
+  ],
+  "kind": "talisman",
+  "weight": 0.2,
+  "rarity": "uncommon",
+  "description": "Burden thresholds +15%: lighter rolls in heavier gear.",
+  "stats": {
+    "burden_threshold": 0.15
+  }
+}

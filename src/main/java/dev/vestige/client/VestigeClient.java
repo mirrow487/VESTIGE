@@ -29,10 +29,10 @@ public final class VestigeClient {
         IEventBus gameBus = NeoForge.EVENT_BUS;
         CombatClient.init(modBus, gameBus);
         dev.vestige.client.rpg.RpgClient.init(modBus, gameBus);
+        dev.vestige.client.equipment.EquipmentClient.init(modBus, gameBus);
         modBus.addListener(VestigeClient::renderers);
         modBus.addListener(VestigeClient::particles);
         modBus.addListener(VestigeClient::setup);
-        gameBus.addListener(WeaponTooltips::onTooltip);
         DevDriver.initIfEnabled(gameBus);
     }
 

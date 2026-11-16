@@ -81,6 +81,10 @@ public final class ClientCombat {
 
             @Override
             public boolean canSpendResonance(float cost) {
+                // Hushed: arts are locked (GDD §7.10).
+                if (dev.vestige.combat.status.StatusService.active(player, dev.vestige.stats.StatusType.HUSHED)) {
+                    return false;
+                }
                 return player.isCreative() || player.getData(dev.vestige.combat.CombatModule.RESONANCE).value() + 1.0e-4f >= cost;
             }
 
@@ -92,6 +96,13 @@ public final class ClientCombat {
             @Override
             public boolean hasAmmo() {
                 return dev.vestige.combat.projectile.Ammo.has(player);
+            }
+
+            @Override
+            public String rollAction() {
+                var sheet = dev.vestige.stats.Stats.of(player);
+                return sheet.has(dev.vestige.stats.Perks.HOLLOW_RING) && sheet.burden != dev.vestige.stats.Burden.OVERBURDENED
+                        ? "roll_blink" : sheet.burden.rollAction;
             }
 
             @Override

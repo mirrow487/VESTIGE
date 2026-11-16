@@ -1,0 +1,22 @@
+{
+  "items": [
+    "vestige:bellbronze_helm"
+  ],
+  "slot": "head",
+  "set": "vestige:bellbronze",
+  "weight": 3.6,
+  "stats": {
+    "poise": 4,
+    "absorption": {
+      "slash": 0.06,
+      "strike": 0.06,
+      "pierce": 0.06,
+      "resonance": 0.09,
+      "cinder": 0.04,
+      "hush": 0.03,
+      "void": 0.03,
+      "radiance": 0.04
+    }
+  },
+  "rarity": "uncommon"
+}

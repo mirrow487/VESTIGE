@@ -12,7 +12,22 @@ import net.minecraft.resources.ResourceLocation;
  * expressed here: ranges, cooldowns and the pause between attacks.
  */
 public record EnemyProfile(ResourceLocation moveset, float health, float defense, float poise, int poiseRegenDelay,
-                           Engage engage, List<Attack> attacks, int glim) {
+                           Engage engage, List<Attack> attacks, int glim, java.util.Optional<dev.vestige.stats.DamageSpread> defenses,
+                           dev.vestige.stats.DamageSpread absorption, java.util.Map<dev.vestige.stats.DamageType, Float> weaknesses,
+                           String family, java.util.Map<dev.vestige.stats.StatusType, Float> statusResist) {
+
+    /**
+     * Defence per type: explicit, or the flat {@code defense} for physical types and 60% of it for the rest.
+     */
+    public dev.vestige.stats.DamageSpread defenseSpread() {
+        return defenses.orElseGet(() -> {
+            java.util.EnumMap<dev.vestige.stats.DamageType, Float> m = new java.util.EnumMap<>(dev.vestige.stats.DamageType.class);
+            for (dev.vestige.stats.DamageType t : dev.vestige.stats.DamageType.all()) {
+                m.put(t, t.physical ? defense : defense * 0.6f);
+            }
+            return dev.vestige.stats.DamageSpread.of(m);
+        });
+    }
 
     /** Preferred spacing and the pause between attacks. */
     public record Engage(float min, float max, float strafeSpeed, int pauseMin, int pauseMax) {
@@ -47,6 +62,11 @@ public record EnemyProfile(ResourceLocation moveset, float health, float defense
             Codec.intRange(0, 2000).optionalFieldOf("poise_regen_delay", 60).forGetter(EnemyProfile::poiseRegenDelay),
             Engage.CODEC.fieldOf("engage").forGetter(EnemyProfile::engage),
             Attack.CODEC.listOf().fieldOf("attacks").forGetter(EnemyProfile::attacks),
-            Codec.intRange(0, 1_000_000).optionalFieldOf("glim", 0).forGetter(EnemyProfile::glim)
+            Codec.intRange(0, 1_000_000).optionalFieldOf("glim", 0).forGetter(EnemyProfile::glim),
+            dev.vestige.stats.DamageSpread.CODEC.optionalFieldOf("defenses").forGetter(EnemyProfile::defenses),
+            dev.vestige.stats.DamageSpread.CODEC.optionalFieldOf("absorption", dev.vestige.stats.DamageSpread.EMPTY).forGetter(EnemyProfile::absorption),
+            Codec.unboundedMap(dev.vestige.stats.DamageType.CODEC, Codec.FLOAT).optionalFieldOf("weaknesses", java.util.Map.of()).forGetter(EnemyProfile::weaknesses),
+            Codec.STRING.optionalFieldOf("family", "").forGetter(EnemyProfile::family),
+            Codec.unboundedMap(dev.vestige.stats.StatusType.CODEC, Codec.FLOAT).optionalFieldOf("status_resist", java.util.Map.of()).forGetter(EnemyProfile::statusResist)
     ).apply(i, EnemyProfile::new));
 }

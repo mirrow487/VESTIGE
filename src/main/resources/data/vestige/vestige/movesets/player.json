@@ -23,6 +23,98 @@
         "move_ticks": 10
       }
     },
+    "roll_light": {
+      "timing": {
+        "windup": 0,
+        "active": 10,
+        "recovery": 5,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 0
+      },
+      "power": {
+        "stamina": 14,
+        "motion_value": 1.0,
+        "poise_damage": 0,
+        "damage": 0
+      },
+      "pose": "roll",
+      "dodge": {
+        "iframe_start": 2,
+        "iframe_end": 10,
+        "distance": 4.5,
+        "move_ticks": 10
+      }
+    },
+    "roll_heavy": {
+      "timing": {
+        "windup": 0,
+        "active": 11,
+        "recovery": 8,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 0
+      },
+      "power": {
+        "stamina": 20,
+        "motion_value": 1.0,
+        "poise_damage": 0,
+        "damage": 0
+      },
+      "pose": "roll",
+      "dodge": {
+        "iframe_start": 4,
+        "iframe_end": 8,
+        "distance": 2.5,
+        "move_ticks": 11
+      }
+    },
+    "roll_overburdened": {
+      "timing": {
+        "windup": 0,
+        "active": 12,
+        "recovery": 12,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 0
+      },
+      "power": {
+        "stamina": 25,
+        "motion_value": 1.0,
+        "poise_damage": 0,
+        "damage": 0
+      },
+      "pose": "roll_stumble",
+      "dodge": {
+        "iframe_start": 0,
+        "iframe_end": 0,
+        "distance": 1.2,
+        "move_ticks": 10
+      }
+    },
+    "roll_blink": {
+      "timing": {
+        "windup": 0,
+        "active": 6,
+        "recovery": 4,
+        "combo_window": 0.4,
+        "cancel_window": 0.4,
+        "hitstop": 0
+      },
+      "power": {
+        "stamina": 16,
+        "motion_value": 1.0,
+        "poise_damage": 0,
+        "damage": 0
+      },
+      "pose": "blink_step",
+      "dodge": {
+        "iframe_start": 0,
+        "iframe_end": 7,
+        "distance": 2.8,
+        "move_ticks": 3
+      }
+    },
     "backstep": {
       "timing": {
         "windup": 0,

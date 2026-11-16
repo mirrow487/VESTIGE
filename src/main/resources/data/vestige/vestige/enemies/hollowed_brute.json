@@ -5,6 +5,25 @@
   "poise": 60,
   "poise_regen_delay": 80,
   "glim": 110,
+  "family": "pale",
+  "defenses": {
+    "slash": 34,
+    "strike": 16,
+    "pierce": 28,
+    "cinder": 14,
+    "resonance": 18,
+    "hush": 10,
+    "void": 14,
+    "radiance": 12
+  },
+  "weaknesses": {
+    "cinder": 1.15,
+    "hush": 0.6
+  },
+  "status_resist": {
+    "rend": 0.4,
+    "hushed": 0.5
+  },
   "engage": {
     "min": 1.8,
     "max": 2.8,

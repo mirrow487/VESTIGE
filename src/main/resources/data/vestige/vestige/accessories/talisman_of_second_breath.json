@@ -1,0 +1,12 @@
+{
+  "items": [
+    "vestige:talisman_of_second_breath"
+  ],
+  "kind": "talisman",
+  "weight": 0.5,
+  "rarity": "relic",
+  "description": "Once every 10 minutes, a killing blow leaves you at 20% health instead.",
+  "stats": {
+    "perk": "second_breath"
+  }
+}

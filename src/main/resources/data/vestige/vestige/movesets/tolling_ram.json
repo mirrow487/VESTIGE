@@ -13,7 +13,8 @@
         "stamina": 0,
         "motion_value": 1.0,
         "poise_damage": 0,
-        "damage": 34
+        "damage": 34,
+        "physical": "strike"
       },
       "pose": "ram_charge",
       "hyperarmor": true,
@@ -52,7 +53,11 @@
         "stamina": 0,
         "motion_value": 1.0,
         "poise_damage": 0,
-        "damage": 22
+        "damage": 22,
+        "types": {
+          "resonance": 0.7,
+          "strike": 0.3
+        }
       },
       "pose": "ram_toll",
       "hyperarmor": true,
@@ -88,7 +93,8 @@
         "stamina": 0,
         "motion_value": 1.0,
         "poise_damage": 0,
-        "damage": 24
+        "damage": 24,
+        "physical": "strike"
       },
       "pose": "ram_headbutt",
       "hit": {

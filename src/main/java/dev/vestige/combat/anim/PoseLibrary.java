@@ -787,4 +787,23 @@ public final class PoseLibrary {
                         .set(LEFT_LEG_BEND, 100).set(BODY_Y, -5.5f).set(TORSO_PITCH, 14).set(HEAD_PITCH, 20)
                         .set(RIGHT_ARM_PITCH, -40).set(RIGHT_ARM_BEND, 30).set(LEFT_ARM_PITCH, -25).set(LEFT_ARM_YAW, 20));
     }
+
+    // ================================================================ M5: burden rolls
+    static {
+        // Overburdened: a lurching half-roll that ends on one knee.
+        def("roll_stumble",
+                k(ACTIVE, 0.3f, Ease.OUTQUAD).set(TORSO_PITCH, 30).set(BODY_PITCH, 35).set(RIGHT_ARM_PITCH, -70).set(LEFT_ARM_PITCH, -40)
+                        .set(RIGHT_LEG_PITCH, -40).set(LEFT_LEG_PITCH, 20).set(HEAD_PITCH, 20),
+                k(ACTIVE, 0.8f, Ease.INQUAD).set(TORSO_PITCH, 40).set(BODY_PITCH, 60).set(BODY_Y, -4f).set(RIGHT_ARM_PITCH, -20)
+                        .set(LEFT_ARM_PITCH, -10).set(RIGHT_LEG_PITCH, -80).set(RIGHT_LEG_BEND, 80).set(LEFT_LEG_BEND, 90),
+                k(RECOVERY, 0.4f, Ease.INOUTSINE).set(TORSO_PITCH, 20).set(BODY_PITCH, 10).set(BODY_Y, -4f).set(RIGHT_LEG_PITCH, -85)
+                        .set(RIGHT_LEG_BEND, 90).set(LEFT_LEG_BEND, 95).set(HEAD_PITCH, 15));
+        // Hollow Ring: a low, coiled blink with the arms swept back.
+        def("blink_step",
+                k(ACTIVE, 0.25f, Ease.OUTEXPO).set(TORSO_PITCH, 28).set(RIGHT_ARM_PITCH, 30).set(RIGHT_ARM_ROLL, 30)
+                        .set(LEFT_ARM_PITCH, 30).set(LEFT_ARM_ROLL, -30).set(RIGHT_LEG_PITCH, -30).set(RIGHT_LEG_BEND, 40)
+                        .set(LEFT_LEG_PITCH, 25).set(LEFT_LEG_BEND, 30),
+                k(ACTIVE, 1f, Ease.LINEAR).set(TORSO_PITCH, 22).set(RIGHT_ARM_PITCH, 20).set(RIGHT_ARM_ROLL, 25)
+                        .set(LEFT_ARM_PITCH, 20).set(LEFT_ARM_ROLL, -25).set(RIGHT_LEG_BEND, 25).set(LEFT_LEG_BEND, 25));
+    }
 }

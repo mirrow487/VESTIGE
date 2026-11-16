@@ -1,0 +1,22 @@
+{
+  "items": [
+    "vestige:bellbronze_sabatons"
+  ],
+  "slot": "feet",
+  "set": "vestige:bellbronze",
+  "weight": 3.6,
+  "stats": {
+    "poise": 3,
+    "absorption": {
+      "slash": 0.05,
+      "strike": 0.05,
+      "pierce": 0.05,
+      "resonance": 0.06,
+      "cinder": 0.03,
+      "hush": 0.02,
+      "void": 0.02,
+      "radiance": 0.03
+    }
+  },
+  "rarity": "uncommon"
+}

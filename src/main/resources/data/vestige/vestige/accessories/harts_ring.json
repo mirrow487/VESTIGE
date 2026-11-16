@@ -1,0 +1,12 @@
+{
+  "items": [
+    "vestige:harts_ring"
+  ],
+  "kind": "ring",
+  "weight": 0.5,
+  "rarity": "rare",
+  "description": "+12% damage while above 80% health.",
+  "stats": {
+    "perk": "harts_ring"
+  }
+}

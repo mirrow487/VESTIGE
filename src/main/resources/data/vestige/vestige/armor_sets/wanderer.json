@@ -1,0 +1,11 @@
+{
+  "name": "Wanderer's Garb",
+  "two_piece": {
+    "stamina_regen": 0.05
+  },
+  "two_text": "+5% stamina regeneration",
+  "four_piece": {
+    "perk": "wanderer_sure_foot"
+  },
+  "four_text": "Sure Foot: fall damage -30%"
+}

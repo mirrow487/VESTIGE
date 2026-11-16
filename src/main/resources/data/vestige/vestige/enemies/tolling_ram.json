@@ -5,6 +5,21 @@
   "poise": 35,
   "poise_regen_delay": 70,
   "glim": 64,
+  "family": "beast",
+  "defenses": {
+    "slash": 14,
+    "strike": 24,
+    "pierce": 8,
+    "cinder": 8,
+    "resonance": 20,
+    "hush": 9,
+    "void": 9,
+    "radiance": 9
+  },
+  "weaknesses": {
+    "cinder": 1.2,
+    "resonance": 0.7
+  },
   "engage": {
     "min": 2.0,
     "max": 7.0,

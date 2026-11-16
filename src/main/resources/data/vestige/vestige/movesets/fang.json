@@ -69,7 +69,8 @@
         "stamina": 8,
         "motion_value": 0.85,
         "poise_damage": 5,
-        "damage": 0
+        "damage": 0,
+        "physical": "pierce"
       },
       "pose": "fang_stab",
       "hit": {
@@ -152,7 +153,8 @@
         "stamina": 16,
         "motion_value": 1.3,
         "poise_damage": 10,
-        "damage": 0
+        "damage": 0,
+        "physical": "pierce"
       },
       "pose": "fang_lunge",
       "hyperarmor": true,
@@ -185,7 +187,8 @@
         "stamina": 10,
         "motion_value": 0.95,
         "poise_damage": 6,
-        "damage": 0
+        "damage": 0,
+        "physical": "pierce"
       },
       "pose": "fang_slide",
       "hit": {
@@ -267,7 +270,8 @@
         "stamina": 0,
         "motion_value": 3.5,
         "poise_damage": 0,
-        "damage": 0
+        "damage": 0,
+        "physical": "pierce"
       },
       "pose": "fang_riposte",
       "hit": {

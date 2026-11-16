@@ -116,7 +116,10 @@ public final class PlayerModule implements VestigeModule {
             }
         }
         if (paid) {
-            float heal = FlaskRules.healPerTick(player.getMaxHealth(), FlaskService.get(player).kindling());
+            // Kindling, Lamplight and gear raise the sip; Scorch cuts it (GDD §7.10, §8.4, §8.6).
+            float heal = (FlaskRules.healPerTick(player.getMaxHealth(), FlaskService.get(player).kindling())
+                    + player.getMaxHealth() * dev.vestige.stats.Stats.of(player).flaskHealBonus / FlaskRules.HEAL_TICKS)
+                    * dev.vestige.combat.status.StatusService.healFactor(player);
             // Set directly: health scaling must not multiply a heal that is already in VESTIGE units.
             player.setHealth(Math.min(player.getMaxHealth(), player.getHealth() + heal));
             if (player.tickCount % 3 == 0) {
@@ -137,7 +140,7 @@ public final class PlayerModule implements VestigeModule {
             return;
         }
         if (dead.getKillCredit() instanceof ServerPlayer killer) {
-            long glim = glimFor(dead);
+            long glim = Math.round(glimFor(dead) * dev.vestige.stats.Stats.of(killer).glimGain);
             if (glim > 0) {
                 GlimService.add(killer, glim);
             }

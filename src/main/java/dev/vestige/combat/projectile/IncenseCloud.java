@@ -27,7 +27,7 @@ public class IncenseCloud extends Entity {
 
     private LivingEntity owner;
     private RunningAction action;
-    private double attackRating;
+    private dev.vestige.stats.DamageSpread attack = dev.vestige.stats.DamageSpread.EMPTY;
     private float motionValue;
     private int interval = 10;
     /** For tests: damage ticks dealt. */
@@ -38,11 +38,11 @@ public class IncenseCloud extends Entity {
         noPhysics = true;
     }
 
-    public void configure(LivingEntity owner, RunningAction action, double attackRating, float radius, int duration, int interval,
+    public void configure(LivingEntity owner, RunningAction action, dev.vestige.stats.DamageSpread attack, float radius, int duration, int interval,
                           float motionValue) {
         this.owner = owner;
         this.action = action;
-        this.attackRating = attackRating;
+        this.attack = attack;
         this.motionValue = motionValue;
         this.interval = Math.max(1, interval);
         entityData.set(RADIUS, radius);
@@ -84,7 +84,7 @@ public class IncenseCloud extends Entity {
             if (friendly || e.distanceToSqr(getX(), e.getY(), getZ()) > r * r) {
                 continue;
             }
-            CombatDamage.apply(owner, e, action, attackRating, 0f, 0f, CombatDamageTypes.WEAPON, CombatDamage.Options.cloud(motionValue));
+            CombatDamage.apply(owner, e, action, attack, 0f, 0f, CombatDamageTypes.WEAPON, CombatDamage.Options.cloud(motionValue));
             pulses++;
         }
     }

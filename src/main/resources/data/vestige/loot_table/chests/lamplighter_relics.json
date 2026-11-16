@@ -1,0 +1,60 @@
+{
+  "type": "minecraft:chest",
+  "random_sequence": "vestige:chests/lamplighter_relics",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:empty",
+          "weight": 30
+        },
+        {
+          "type": "minecraft:item",
+          "name": "vestige:windsail_cape",
+          "weight": 4
+        },
+        {
+          "type": "minecraft:item",
+          "name": "vestige:bellbronze_spurs",
+          "weight": 5
+        },
+        {
+          "type": "minecraft:item",
+          "name": "vestige:divers_bell",
+          "weight": 5
+        },
+        {
+          "type": "minecraft:item",
+          "name": "vestige:climbers_hooks",
+          "weight": 4
+        },
+        {
+          "type": "minecraft:item",
+          "name": "vestige:pale_hook",
+          "weight": 2
+        },
+        {
+          "type": "minecraft:item",
+          "name": "vestige:hollow_ring",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "vestige:ledger_of_debts",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "vestige:talisman_of_second_breath",
+          "weight": 1
+        },
+        {
+          "type": "minecraft:item",
+          "name": "vestige:ring_of_the_unsung",
+          "weight": 1
+        }
+      ]
+    }
+  ]
+}

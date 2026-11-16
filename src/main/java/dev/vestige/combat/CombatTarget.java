@@ -33,4 +33,34 @@ public interface CombatTarget {
 
     /** Forced stagger from an attack's {@code inflict_stagger} (e.g. a pinning thrust). */
     void forceStagger(int ticks);
+
+    /** Defence per damage type (GDD §7.10); by default the physical defence everywhere. */
+    default dev.vestige.stats.DamageSpread combatDefenses() {
+        return dev.vestige.stats.DamageSpread.uniform(combatDefense());
+    }
+
+    /** Fraction of each damage type absorbed. */
+    default dev.vestige.stats.DamageSpread combatAbsorption() {
+        return dev.vestige.stats.DamageSpread.EMPTY;
+    }
+
+    /** Damage taken multiplier for a type (weaknesses above 1, resistances below). */
+    default float weakness(dev.vestige.stats.DamageType type) {
+        return 1f;
+    }
+
+    /** Creature family ("pale", "beast", "hush", "void", ...): Radiance smites pale, hush and void. */
+    default String family() {
+        return "";
+    }
+
+    /** Fraction of status buildup resisted. */
+    default float statusResist(dev.vestige.stats.StatusType status) {
+        return 0f;
+    }
+
+    /** True while winding up or swinging an attack (Pierce counter-hits). */
+    default boolean isAttacking() {
+        return false;
+    }
 }

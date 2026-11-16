@@ -46,7 +46,8 @@
         "stamina": 0,
         "motion_value": 1.0,
         "poise_damage": 0,
-        "damage": 18
+        "damage": 18,
+        "physical": "strike"
       },
       "pose": "hollowed_backhand",
       "hit": {
@@ -79,7 +80,8 @@
         "stamina": 0,
         "motion_value": 1.0,
         "poise_damage": 0,
-        "damage": 32
+        "damage": 32,
+        "physical": "strike"
       },
       "pose": "hollowed_lunge",
       "hit": {

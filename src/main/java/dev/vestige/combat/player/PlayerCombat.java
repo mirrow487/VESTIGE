@@ -43,6 +43,13 @@ public final class PlayerCombat {
     public static final int IN_COMBAT_TICKS = 100;
     /** Default stun when hit out of hyperarmor. */
     public static final int DEFAULT_HIT_STUN = 8;
+    /** Set by the player module: what the Ledger of Debts takes when its bearer is hit (combat does not own Glim). */
+    private static volatile java.util.function.Consumer<ServerPlayer> ledgerHook = p -> {};
+
+    public static void setLedgerHook(java.util.function.Consumer<ServerPlayer> hook) {
+        ledgerHook = hook;
+    }
+
     /** Set by the player module: whether a player's Wick Flask has a charge (combat does not own the flask). */
     private static volatile java.util.function.Predicate<Player> flaskCheck = p -> false;
 
@@ -118,6 +125,10 @@ public final class PlayerCombat {
 
             @Override
             public boolean canSpendResonance(float cost) {
+                // Hushed: arts are locked (GDD §7.10).
+                if (dev.vestige.combat.status.StatusService.active(player, dev.vestige.stats.StatusType.HUSHED)) {
+                    return false;
+                }
                 return player.isCreative() || ResonanceService.get(player) + 1.0e-4f >= cost;
             }
 
@@ -129,6 +140,13 @@ public final class PlayerCombat {
             @Override
             public boolean hasAmmo() {
                 return Ammo.has(player);
+            }
+
+            @Override
+            public String rollAction() {
+                var sheet = dev.vestige.stats.Stats.of(player);
+                return sheet.has(dev.vestige.stats.Perks.HOLLOW_RING) && sheet.burden != dev.vestige.stats.Burden.OVERBURDENED
+                        ? "roll_blink" : sheet.burden.rollAction;
             }
 
             @Override
@@ -219,7 +237,7 @@ public final class PlayerCombat {
         }
         // Sprinting in combat stance (armed) costs stamina; at zero the sprint stops (GDD §8.2).
         if (player.isSprinting() && weapon(player).isPresent() && current == null
-                && StaminaService.drain(player, SPRINT_STAMINA_PER_TICK) <= 0f) {
+                && StaminaService.drain(player, SPRINT_STAMINA_PER_TICK * dev.vestige.stats.Stats.of(player).sprintStaminaFactor) <= 0f) {
             player.setSprinting(false);
         }
         ResonanceService.tick(player, now - st.lastCombatTick);
@@ -274,8 +292,8 @@ public final class PlayerCombat {
                 return;
             }
             CombatArrow arrow = new CombatArrow(player.level(), player, ammo);
-            arrow.arm(action, weapon.get().attackRating(), poiseScale(player, weapon.get()), action.damageBonus,
-                    ResonanceRules.hitGain(weapon.get().weight()));
+            arrow.arm(action, PlayerAttack.spread(player, weapon.get(), action.def), poiseScale(player, weapon.get()),
+                    PlayerAttack.bonus(player, action), ResonanceRules.hitGain(weapon.get().weight()), PlayerAttack.status(player, weapon.get()));
             arrow.pickup = player.getAbilities().instabuild || !p.ammo()
                     ? net.minecraft.world.entity.projectile.AbstractArrow.Pickup.CREATIVE_ONLY
                     : net.minecraft.world.entity.projectile.AbstractArrow.Pickup.ALLOWED;
@@ -293,7 +311,8 @@ public final class PlayerCombat {
             }
             var ahead = net.minecraft.world.phys.Vec3.directionFromRotation(0f, player.getYRot()).scale(c.offset());
             cloud.moveTo(player.getX() + ahead.x, player.getY(), player.getZ() + ahead.z);
-            cloud.configure(player, action, weapon.get().attackRating(), c.radius(), c.duration(), c.interval(), c.motionValue());
+            cloud.configure(player, action, PlayerAttack.spread(player, weapon.get(), action.def), c.radius(), c.duration(), c.interval(),
+                    c.motionValue());
             player.level().addFreshEntity(cloud);
         });
     }
@@ -307,13 +326,13 @@ public final class PlayerCombat {
         long now = player.level().getGameTime();
         for (Entity e : HitResolver.sweep(player, action, player.getYRot(), PlayerCombat::canHit)) {
             if (e instanceof LivingEntity living) {
-                CombatDamage.Options opt = CombatDamage.Options.MELEE;
+                CombatDamage.Options opt = CombatDamage.Options.MELEE.withStatus(PlayerAttack.status(player, weapon.get()));
                 boolean keen = st.keen(now) && action.kind != RunningAction.Kind.RIPOSTE;
                 if (keen) {
                     opt = opt.keen(riposteMotion(player));
                 }
-                CombatDamage.Outcome out = CombatDamage.apply(player, living, action, weapon.get().attackRating(), poiseScale,
-                        action.damageBonus, CombatDamageTypes.WEAPON, opt);
+                CombatDamage.Outcome out = CombatDamage.apply(player, living, action, PlayerAttack.spread(player, weapon.get(), action.def),
+                        poiseScale, PlayerAttack.bonus(player, action), CombatDamageTypes.WEAPON, opt);
                 if (out.landed() && keen) {
                     st.keenUntil = Long.MIN_VALUE / 2;
                 }
@@ -375,15 +394,39 @@ public final class PlayerCombat {
      * hyperarmor during its windup (GDD §7.8), then plays a flinch or stagger.
      */
     public static void onHitByAction(ServerPlayer player, RunningAction attack) {
+        onHitByAction(player, attack, Float.MAX_VALUE);
+    }
+
+    /** Player poise (GDD §7.8): the pool absorbs hits without a flinch until it breaks, and refills 3 s after the last hit. */
+    public static final int POISE_RESET_TICKS = 60;
+
+    public static void onHitByAction(ServerPlayer player, RunningAction attack, float poiseDamage) {
         PlayerCombatState st = state(player);
         long now = player.level().getGameTime();
         st.lastCombatTick = now;
         ResonanceService.add(player, ResonanceRules.HIT_TAKEN);
+        if (dev.vestige.stats.Stats.of(player).has(dev.vestige.stats.Perks.LEDGER_OF_DEBTS)) {
+            ledgerHook.accept(player);
+        }
         RunningAction current = st.machine.current();
         boolean armored = current != null && current.def.hyperarmor() && current.phase() == ActionPhase.WINDUP;
         if (armored && attack.def.inflictStagger() == 0) {
             return;
         }
+        var sheet = dev.vestige.stats.Stats.of(player);
+        float pool = sheet.poise;
+        if (sheet.has(dev.vestige.stats.Perks.WICKIRON_SLOW_BURN) && player.getHealth() < player.getMaxHealth() * 0.3f) {
+            pool += 15f; // Wickiron Plate (4): the wax hardens
+        }
+        if (now - st.lastPoiseHit > POISE_RESET_TICKS) {
+            st.poiseTaken = 0f;
+        }
+        st.lastPoiseHit = now;
+        st.poiseTaken += poiseDamage;
+        if (attack.def.inflictStagger() == 0 && pool > 0f && st.poiseTaken < pool) {
+            return; // poised through it: hurt, but not interrupted
+        }
+        st.poiseTaken = 0f;
         int stun = Math.max(DEFAULT_HIT_STUN, attack.def.inflictStagger());
         st.machine.interrupt(now, stun);
         if (current != null) {

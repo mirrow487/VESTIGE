@@ -6,5 +6,21 @@
   "moveset": "vestige:censer",
   "attack_rating": 74,
   "poise_damage": 1.0,
-  "weight": 5.0
+  "weight": 5.0,
+  "rarity": "rare",
+  "damage": {
+    "strike": 48,
+    "cinder": 30
+  },
+  "scaling": {
+    "strength": "C",
+    "lamplight": "C"
+  },
+  "requirements": {
+    "strength": 12,
+    "lamplight": 12
+  },
+  "status": {
+    "scorch": 8
+  }
 }

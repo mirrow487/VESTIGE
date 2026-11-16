@@ -1,0 +1,12 @@
+{
+  "items": [
+    "vestige:climbers_hooks"
+  ],
+  "kind": "relic",
+  "weight": 1.0,
+  "rarity": "rare",
+  "description": "Cling to a wall by jumping into it, and climb.",
+  "stats": {
+    "perk": "climbers_hooks"
+  }
+}

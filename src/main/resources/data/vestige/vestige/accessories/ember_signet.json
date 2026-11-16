@@ -1,0 +1,15 @@
+{
+  "items": [
+    "vestige:ember_signet"
+  ],
+  "kind": "ring",
+  "weight": 0.5,
+  "rarity": "rare",
+  "description": "Cinder damage +10%, and every hit builds Scorch.",
+  "stats": {
+    "type_bonus": {
+      "cinder": 0.1
+    },
+    "perk": "ember_signet"
+  }
+}

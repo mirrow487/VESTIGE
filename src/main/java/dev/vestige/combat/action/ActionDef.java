@@ -126,15 +126,31 @@ public record ActionDef(Timing timing, Power power, boolean hyperarmor, Optional
      * @param motionValue  multiplier on the weapon's attack rating
      * @param poiseDamage  poise damage dealt per hit
      * @param damage       flat attack rating for enemy actions (players use their weapon instead)
+     * @param physical     overrides the weapon's physical type for this action (a sword's thrust pierces)
+     * @param types        enemy actions: fraction of {@code damage} per type
      */
-    public record Power(float stamina, float motionValue, float poiseDamage, float damage) {
-        public static final Power NONE = new Power(0f, 0f, 0f, 0f);
+    public record Power(float stamina, float motionValue, float poiseDamage, float damage,
+                        Optional<dev.vestige.stats.DamageType> physical, dev.vestige.stats.DamageSpread types) {
+        public static final Power NONE = new Power(0f, 0f, 0f, 0f, Optional.empty(), dev.vestige.stats.DamageSpread.EMPTY);
         public static final Codec<Power> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.FLOAT.optionalFieldOf("stamina", 0f).forGetter(Power::stamina),
                 Codec.FLOAT.optionalFieldOf("motion_value", 1f).forGetter(Power::motionValue),
                 Codec.FLOAT.optionalFieldOf("poise_damage", 0f).forGetter(Power::poiseDamage),
-                Codec.FLOAT.optionalFieldOf("damage", 0f).forGetter(Power::damage)
+                Codec.FLOAT.optionalFieldOf("damage", 0f).forGetter(Power::damage),
+                dev.vestige.stats.DamageType.CODEC.optionalFieldOf("physical").forGetter(Power::physical),
+                dev.vestige.stats.DamageSpread.CODEC.optionalFieldOf("types", dev.vestige.stats.DamageSpread.EMPTY).forGetter(Power::types)
         ).apply(i, Power::new));
+
+        /**
+         * An enemy action's attack per type: {@code damage} split by {@code types} fractions (default:
+         * all Slash, or the {@code physical} override).
+         */
+        public dev.vestige.stats.DamageSpread enemySpread() {
+            if (types.isEmpty()) {
+                return dev.vestige.stats.DamageSpread.single(physical.orElse(dev.vestige.stats.DamageType.SLASH), damage);
+            }
+            return types.scaled(damage / Math.max(1e-6f, types.total()));
+        }
     }
 
     /** Forward root motion in blocks per tick for each phase. */

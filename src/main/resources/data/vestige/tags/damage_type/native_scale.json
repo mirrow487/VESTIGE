@@ -1,6 +1,7 @@
 {
   "values": [
     "vestige:weapon",
-    "vestige:enemy_attack"
+    "vestige:enemy_attack",
+    "vestige:status"
   ]
 }

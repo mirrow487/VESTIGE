@@ -1,0 +1,12 @@
+{
+  "items": [
+    "vestige:ring_of_the_unsung"
+  ],
+  "kind": "ring",
+  "weight": 0.5,
+  "rarity": "relic",
+  "description": "Resonance never fades.",
+  "stats": {
+    "perk": "unsung_ring"
+  }
+}

@@ -144,7 +144,9 @@ public abstract class VestigeMob extends Monster implements CombatTarget, Health
             applyProfile();
         }
         profile().ifPresent(p -> {
-            if (level().getGameTime() - lastPoiseHit > p.poiseRegenDelay()) {
+            // Hushed enemies cannot recover their poise (GDD §7.10).
+            if (level().getGameTime() - lastPoiseHit > p.poiseRegenDelay()
+                    && !dev.vestige.combat.status.StatusService.active(this, dev.vestige.stats.StatusType.HUSHED)) {
                 poise = p.poise();
             }
         });
@@ -184,9 +186,10 @@ public abstract class VestigeMob extends Monster implements CombatTarget, Health
             for (Entity e : HitResolver.sweep(this, current, getYRot(), this::canHitWithAction)) {
                 if (e instanceof LivingEntity living) {
                     RunningAction attack = current;
-                    CombatDamage.Outcome out = CombatDamage.apply(this, living, attack, attack.def.power().damage(), 1f, 0f, CombatDamageTypes.ENEMY_ATTACK);
+                    CombatDamage.Outcome out = CombatDamage.apply(this, living, attack, attack.def.power().enemySpread(), 1f, 0f,
+                            CombatDamageTypes.ENEMY_ATTACK);
                     if (out.landed() && living instanceof ServerPlayer player && out.defense() == dev.vestige.combat.player.PlayerDefense.Result.Kind.NONE) {
-                        PlayerCombat.onHitByAction(player, attack);
+                        PlayerCombat.onHitByAction(player, attack, out.poise());
                     }
                     if (current != attack) {
                         return; // parried: this action was replaced by the reel
@@ -258,6 +261,37 @@ public abstract class VestigeMob extends Monster implements CombatTarget, Health
     @Override
     public float combatDefense() {
         return profile().map(EnemyProfile::defense).orElse(0f);
+    }
+
+    @Override
+    public dev.vestige.stats.DamageSpread combatDefenses() {
+        return profile().map(EnemyProfile::defenseSpread).orElse(dev.vestige.stats.DamageSpread.EMPTY);
+    }
+
+    @Override
+    public dev.vestige.stats.DamageSpread combatAbsorption() {
+        return profile().map(EnemyProfile::absorption).orElse(dev.vestige.stats.DamageSpread.EMPTY);
+    }
+
+    @Override
+    public float weakness(dev.vestige.stats.DamageType type) {
+        return profile().map(p -> p.weaknesses().getOrDefault(type, 1f)).orElse(1f);
+    }
+
+    @Override
+    public String family() {
+        return profile().map(EnemyProfile::family).orElse("");
+    }
+
+    @Override
+    public float statusResist(dev.vestige.stats.StatusType status) {
+        return profile().map(p -> p.statusResist().getOrDefault(status, 0f)).orElse(0f);
+    }
+
+    @Override
+    public boolean isAttacking() {
+        return current != null && current.def.hit().isPresent() && current.phase() != ActionPhase.RECOVERY
+                && !java.util.Set.of("flinch", "stagger", "parried", "riposted").contains(current.ref.action());
     }
 
     private boolean playing(String action) {

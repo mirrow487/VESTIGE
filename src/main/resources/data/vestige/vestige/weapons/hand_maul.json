@@ -6,5 +6,15 @@
   "moveset": "vestige:maul",
   "attack_rating": 72,
   "poise_damage": 1.0,
-  "weight": 7.0
+  "weight": 7.0,
+  "rarity": "common",
+  "damage": {
+    "strike": 72
+  },
+  "scaling": {
+    "strength": "B"
+  },
+  "requirements": {
+    "strength": 14
+  }
 }

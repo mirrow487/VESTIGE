@@ -1,0 +1,12 @@
+{
+  "items": [
+    "vestige:bellbronze_band"
+  ],
+  "kind": "ring",
+  "weight": 1.0,
+  "rarity": "uncommon",
+  "description": "A band of bell metal: you stand firmer.",
+  "stats": {
+    "poise": 10
+  }
+}

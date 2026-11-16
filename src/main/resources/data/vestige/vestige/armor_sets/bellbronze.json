@@ -1,0 +1,11 @@
+{
+  "name": "Bellbronze Mail",
+  "two_piece": {
+    "poise": 8
+  },
+  "two_text": "+8 poise",
+  "four_piece": {
+    "perk": "bellbronze_toll"
+  },
+  "four_text": "Toll: every 4th hit rings a Resonance shockwave"
+}

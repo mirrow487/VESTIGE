@@ -6,5 +6,15 @@
   "moveset": "vestige:longbow",
   "attack_rating": 58,
   "poise_damage": 1.0,
-  "weight": 2.5
+  "weight": 2.5,
+  "rarity": "common",
+  "damage": {
+    "pierce": 58
+  },
+  "scaling": {
+    "dexterity": "B"
+  },
+  "requirements": {
+    "dexterity": 12
+  }
 }

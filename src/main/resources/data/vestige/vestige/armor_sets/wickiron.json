@@ -1,0 +1,15 @@
+{
+  "name": "Wickiron Plate",
+  "two_piece": {
+    "absorption": {
+      "slash": 0.1,
+      "strike": 0.1,
+      "pierce": 0.1
+    }
+  },
+  "two_text": "+10% physical absorption",
+  "four_piece": {
+    "perk": "wickiron_slow_burn"
+  },
+  "four_text": "Slow Burn: below 30% HP, +20% absorption and +15 poise"
+}

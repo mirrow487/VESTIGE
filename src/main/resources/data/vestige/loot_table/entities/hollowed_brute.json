@@ -56,6 +56,24 @@
           ]
         }
       ]
+    },
+    {
+      "rolls": 1,
+      "conditions": [
+        {
+          "condition": "minecraft:killed_by_player"
+        },
+        {
+          "condition": "minecraft:random_chance",
+          "chance": 0.15
+        }
+      ],
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "vestige:kindling_ember"
+        }
+      ]
     }
   ],
   "random_sequence": "vestige:entities/hollowed_brute"

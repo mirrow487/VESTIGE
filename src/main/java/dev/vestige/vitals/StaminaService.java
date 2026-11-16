@@ -47,7 +47,10 @@ public final class StaminaService {
     /** Called every server tick for each player. */
     static void tick(ServerPlayer player, double regenFactor) {
         Stamina s = get(player);
-        float max = ServerConfig.STAMINA_BASE.get().floatValue();
+        // Base from config, plus Endurance and gear (GDD §8.2, §8.6).
+        var sheet = dev.vestige.stats.Stats.of(player);
+        float max = ServerConfig.STAMINA_BASE.get().floatValue() - dev.vestige.stats.AttributeRules.BASE_STAMINA + sheet.maxStamina;
+        regenFactor *= sheet.staminaRegen;
         boolean changed = false;
         if (s.max() != max) {
             s.setMax(max);

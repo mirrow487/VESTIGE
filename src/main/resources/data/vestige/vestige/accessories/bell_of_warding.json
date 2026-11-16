@@ -1,0 +1,12 @@
+{
+  "items": [
+    "vestige:bell_of_warding"
+  ],
+  "kind": "talisman",
+  "weight": 0.5,
+  "rarity": "uncommon",
+  "description": "Hushed buildup -60%.",
+  "stats": {
+    "perk": "bell_of_warding"
+  }
+}

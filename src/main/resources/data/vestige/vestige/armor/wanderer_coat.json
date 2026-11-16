@@ -1,0 +1,22 @@
+{
+  "items": [
+    "vestige:wanderer_coat"
+  ],
+  "slot": "chest",
+  "set": "vestige:wanderer",
+  "weight": 3.5,
+  "stats": {
+    "poise": 3,
+    "absorption": {
+      "slash": 0.07,
+      "strike": 0.07,
+      "pierce": 0.07,
+      "cinder": 0.04,
+      "hush": 0.06,
+      "void": 0.03,
+      "radiance": 0.03,
+      "resonance": 0.03
+    }
+  },
+  "rarity": "common"
+}

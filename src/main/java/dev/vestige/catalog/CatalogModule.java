@@ -49,6 +49,9 @@ public final class CatalogModule implements VestigeModule {
                 out.accept(dev.vestige.player.PlayerModule.WICK_FLASK.get());
                 out.accept(dev.vestige.player.PlayerModule.FLASK_WICK.get());
                 out.accept(dev.vestige.waylight.WaylightModule.WAYLIGHT_ITEM.get());
+                dev.vestige.equipment.EquipmentArmor.ALL.forEach(i -> out.accept(i.get()));
+                dev.vestige.equipment.EquipmentItems.ACCESSORIES.forEach(i -> out.accept(i.get()));
+                out.accept(dev.vestige.equipment.EquipmentItems.KINDLING_EMBER.get());
             })
             .build());
 

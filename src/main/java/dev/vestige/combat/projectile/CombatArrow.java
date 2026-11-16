@@ -23,7 +23,8 @@ import net.minecraft.world.phys.EntityHitResult;
  */
 public class CombatArrow extends AbstractArrow {
     private RunningAction action;
-    private double attackRating;
+    private dev.vestige.stats.DamageSpread attack = dev.vestige.stats.DamageSpread.EMPTY;
+    private java.util.Map<dev.vestige.stats.StatusType, Float> status = java.util.Map.of();
     private float poiseScale = 1f;
     private float damageBonus;
     private float resonanceOnHit;
@@ -37,9 +38,11 @@ public class CombatArrow extends AbstractArrow {
     }
 
     /** Binds the shot that fired this arrow. */
-    public void arm(RunningAction action, double attackRating, float poiseScale, float damageBonus, float resonanceOnHit) {
+    public void arm(RunningAction action, dev.vestige.stats.DamageSpread attack, float poiseScale, float damageBonus, float resonanceOnHit,
+                    java.util.Map<dev.vestige.stats.StatusType, Float> status) {
         this.action = action;
-        this.attackRating = attackRating;
+        this.attack = attack;
+        this.status = status;
         this.poiseScale = poiseScale;
         this.damageBonus = damageBonus;
         this.resonanceOnHit = resonanceOnHit;
@@ -60,8 +63,8 @@ public class CombatArrow extends AbstractArrow {
         if (target == owner) {
             return;
         }
-        CombatDamage.Outcome out = CombatDamage.apply(owner, target, action, attackRating, poiseScale, damageBonus,
-                CombatDamageTypes.WEAPON, CombatDamage.Options.RANGED);
+        CombatDamage.Outcome out = CombatDamage.apply(owner, target, action, attack, poiseScale, damageBonus,
+                CombatDamageTypes.WEAPON, CombatDamage.Options.RANGED.withStatus(status));
         if (out.landed() && owner instanceof ServerPlayer player) {
             ResonanceService.add(player, resonanceOnHit);
         }

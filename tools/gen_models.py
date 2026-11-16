@@ -550,6 +550,178 @@ def ember_ghost_animations():
     }}
 
 
+# ----------------------------------------------------------------------------- armor sets (GeckoLib armor bones)
+# Bones follow GeckoLib's armor convention; GeckoLib aligns each to the wearer's biped part.
+ARMOR_BONES = {'armorHead': (0, 24, 0), 'armorBody': (0, 24, 0), 'armorRightArm': (-5, 22, 0), 'armorLeftArm': (5, 22, 0),
+               'armorRightLeg': (-1.9, 12, 0), 'armorLeftLeg': (1.9, 12, 0), 'armorRightBoot': (-1.9, 12, 0),
+               'armorLeftBoot': (1.9, 12, 0)}
+
+
+def armor_model(name):
+    m = Model('armor_' + name, 128, 128)
+    for bone, pivot in ARMOR_BONES.items():
+        m.bone(bone, None, pivot)
+    return m
+
+
+def both(m, bone_r, bone_l, origin_r, size, paint, mirror_x=0.0, inflate=0.0):
+    """A cube on the right limb and its mirror on the left (x mirrored around the body centre)."""
+    m.cube(bone_r, origin_r, size, paint, inflate=inflate)
+    x, y, z = origin_r
+    m.cube(bone_l, (-(x + size[0]), y, z), size, paint, inflate=inflate, mirror=True)
+
+
+CLOTH_BROWN = (112, 86, 60)
+CLOTH_DARK = (78, 60, 44)
+WOOL_RED = (140, 48, 40)
+LEATHER = (104, 70, 44)
+BRASS_C = (186, 146, 66)
+BRONZE_C = (186, 128, 62)
+BRONZE_DARK = (122, 82, 40)
+IRON_DARK = (62, 62, 70)
+IRON_EDGE = (98, 98, 108)
+WAX_C = (226, 214, 186)
+
+
+def bronze_scales(face, x, y, w, h, rnd):
+    scale = (x + (y // 2) % 2) % 2 == 0 and y % 2 == 0
+    base = BRONZE_C if not scale else (212, 158, 84)
+    if y == h - 1 or face == 'down':
+        base = BRONZE_DARK
+    return noisy(rnd, base, 8)
+
+
+def bronze_plain(face, x, y, w, h, rnd):
+    base = BRONZE_C
+    if face == 'up':
+        base = (212, 158, 84)
+    elif y == h - 1 or x == 0:
+        base = BRONZE_DARK
+    return noisy(rnd, base, 7)
+
+
+def bell_helm(face, x, y, w, h, rnd):
+    if face == 'north' and y in (h // 2, h // 2 + 1) and 1 < x < w - 2:
+        return (20, 14, 10, 255)                       # visor slit
+    if face == 'down':
+        return None
+    return bronze_plain(face, x, y, w, h, rnd)
+
+
+def iron_plate(face, x, y, w, h, rnd):
+    base = IRON_DARK
+    if y == 0 or x == 0 or x == w - 1:
+        base = IRON_EDGE
+    if rnd.random() < 0.05:
+        base = (82, 82, 92)
+    # Wax runs down from the top edge here and there.
+    if face in ('north', 'south') and (x * 7) % 5 == 0 and y < 2 + (x % 3):
+        base = WAX_C
+    return noisy(rnd, base, 6)
+
+
+def great_helm(face, x, y, w, h, rnd):
+    if face == 'north' and y == h // 2 - 1 and 1 < x < w - 2:
+        return (232, 140, 60, 255)                     # ember glow through the eye slit
+    if face == 'north' and y == h // 2 and 1 < x < w - 2:
+        return (16, 12, 10, 255)
+    if face == 'down':
+        return None
+    return iron_plate(face, x, y, w, h, rnd)
+
+
+def candle(face, x, y, w, h, rnd):
+    return noisy(rnd, WAX_C if y > 0 or face != 'up' else (60, 44, 30), 5)
+
+
+def flame(face, x, y, w, h, rnd):
+    return (255, 214 if y == 0 else 150, 90, 255)
+
+
+def wick_cord(face, x, y, w, h, rnd):
+    return noisy(rnd, (52, 40, 30) if (x + y) % 2 else (236, 140, 54), 4)
+
+
+def hood_open(face, x, y, w, h, rnd):
+    if face == 'north' and 1 <= x <= w - 2 and 2 <= y:
+        return None                                    # the face shows through
+    if face == 'down':
+        return None
+    return tattered(CLOTH_BROWN, 0.1)(face, x, y, w, h, rnd)
+
+
+def wanderer_armor():
+    m = armor_model('wanderer')
+    m.cube('armorHead', (-4.5, 23.5, -4.5), (9, 9, 9), hood_open, inflate=0.1)
+    m.cube('armorHead', (-2, 28.5, 4), (4, 4, 3), tattered(CLOTH_BROWN, 0.25))           # hood peak drooping back
+    m.cube('armorBody', (-4.5, 11, -2.5), (9, 13, 5), tattered(CLOTH_DARK, 0.15))          # coat
+    m.cube('armorBody', (-4.9, 21.6, -2.9), (9.8, 2.6, 5.8), solid(WOOL_RED, 10))           # scarf
+    m.cube('armorBody', (-2.5, 18.5, -3.2), (2.4, 4, 1), tattered(WOOL_RED, 0.3))          # scarf tail
+    m.cube('armorBody', (-4.8, 12.4, -2.8), (9.6, 1.3, 5.6), solid(LEATHER, 8))           # belt
+    m.cube('armorBody', (-0.8, 12.2, -3.1), (1.6, 1.7, 0.6), solid(BRASS_C, 6))           # buckle
+    m.cube('armorBody', (1.6, 11.4, 2.4), (3.2, 3.4, 1.6), solid(LEATHER, 10))            # satchel
+    m.bone('cape', 'armorBody', (0, 23.5, 2.6))
+    m.cube('cape', (-4, 9, 2.7), (8, 14.5, 0.6), tattered(CLOTH_BROWN, 0.5))
+    both(m, 'armorRightArm', 'armorLeftArm', (-8.5, 15, -2.5), (5, 9, 5), tattered(CLOTH_DARK, 0.1))
+    both(m, 'armorRightArm', 'armorLeftArm', (-8.4, 11.6, -2.4), (4.8, 2.4, 4.8), solid(LEATHER, 8))   # wrapped forearms
+    both(m, 'armorRightLeg', 'armorLeftLeg', (-4.2, 3, -2.3), (4.6, 9.5, 4.6), solid(CLOTH_BROWN, 9))
+    both(m, 'armorRightLeg', 'armorLeftLeg', (-4.3, 5.5, -2.45), (4.8, 1.5, 4.9), solid(LEATHER, 8))   # knee wraps
+    both(m, 'armorRightBoot', 'armorLeftBoot', (-4.3, -0.2, -2.6), (4.8, 4.2, 5.2), solid(LEATHER, 10))
+    both(m, 'armorRightBoot', 'armorLeftBoot', (-4.5, 3.6, -2.8), (5.2, 1.2, 5.6), solid((84, 56, 36), 8))  # cuffs
+    return m
+
+
+def bellbronze_armor():
+    m = armor_model('bellbronze')
+    m.cube('armorHead', (-4.6, 24, -4.6), (9.2, 7.4, 9.2), bell_helm)
+    m.cube('armorHead', (-5.3, 23, -5.3), (10.6, 1.6, 10.6), bronze_plain)               # flared bell lip
+    m.cube('armorHead', (-0.6, 31, -4.4), (1.2, 2.2, 8.8), bronze_plain)                 # crest
+    m.bone('clapper', 'armorHead', (0, 33, 0))
+    m.cube('clapper', (-1, 33, -1), (2, 1.6, 2), solid((90, 92, 100), 6))                  # finial
+    m.cube('armorBody', (-4.6, 11.6, -2.6), (9.2, 12.6, 5.2), bronze_scales)
+    m.cube('armorBody', (-4.3, 22.4, -3.0), (8.6, 2, 6), bronze_plain)                    # gorget
+    m.cube('armorBody', (-4.8, 12, -2.9), (9.6, 1.2, 5.8), solid((90, 92, 100), 6))        # chain belt
+    both(m, 'armorRightArm', 'armorLeftArm', (-9.4, 20, -3.2), (5.8, 3.4, 6.4), bronze_plain)   # bell pauldron
+    both(m, 'armorRightArm', 'armorLeftArm', (-9.8, 19, -3.6), (6.6, 1.2, 7.2), bronze_plain)   # pauldron lip
+    both(m, 'armorRightArm', 'armorLeftArm', (-8.5, 11.5, -2.5), (5, 7.5, 5), bronze_scales)
+    both(m, 'armorRightLeg', 'armorLeftLeg', (-4.4, 6.5, -2.8), (4.8, 5.6, 0.9), bronze_plain)   # tasset plate
+    both(m, 'armorRightLeg', 'armorLeftLeg', (-4.2, 2.5, -2.4), (4.6, 9.6, 4.8), bronze_scales)
+    both(m, 'armorRightBoot', 'armorLeftBoot', (-4.4, -0.2, -2.8), (5, 4.2, 5.4), bronze_plain)
+    both(m, 'armorRightBoot', 'armorLeftBoot', (-4.2, -0.2, -3.6), (4.6, 2, 1), bronze_plain)    # toe cap
+    return m
+
+
+def wickiron_armor():
+    m = armor_model('wickiron')
+    m.cube('armorHead', (-4.8, 23.4, -4.8), (9.6, 9, 9.6), great_helm)
+    m.bone('candles', 'armorHead', (0, 32.4, 0))
+    for i, (cx, ch) in enumerate(((-3, 2.6), (-0.6, 3.6), (1.8, 2.2))):
+        m.cube('candles', (cx, 32.4, -1), (1.2, ch, 1.2), candle)
+        m.cube('candles', (cx + 0.35, 32.4 + ch, -0.65), (0.5, 0.9, 0.5), flame)
+    m.cube('armorBody', (-4.8, 11, -2.9), (9.6, 13.4, 5.8), iron_plate)
+    m.cube('armorBody', (-4.9, 15, -3.0), (9.8, 0.8, 6.0), wick_cord)                    # wick-cord bands
+    m.cube('armorBody', (-4.9, 19, -3.0), (9.8, 0.8, 6.0), wick_cord)
+    both(m, 'armorRightArm', 'armorLeftArm', (-10, 18.2, -3.6), (6.6, 5.2, 7.2), iron_plate)   # great pauldron
+    both(m, 'armorRightArm', 'armorLeftArm', (-9.6, 16.4, -3.2), (5.8, 2, 6.4), iron_plate)    # second lame
+    both(m, 'armorRightArm', 'armorLeftArm', (-8.6, 11.4, -2.6), (5.2, 5, 5.2), iron_plate)    # vambrace
+    both(m, 'armorRightLeg', 'armorLeftLeg', (-4.4, 2.5, -2.6), (5, 10, 5.2), iron_plate)
+    both(m, 'armorRightLeg', 'armorLeftLeg', (-4.2, 5.4, -3.2), (4.6, 2.2, 1), iron_plate)      # knee cop
+    both(m, 'armorRightBoot', 'armorLeftBoot', (-4.5, -0.3, -2.9), (5.2, 5, 5.8), iron_plate)
+    return m
+
+
+def armor_animations(name):
+    n = 2.8
+    bones = {}
+    if name == 'wanderer':
+        bones['cape'] = {'rotation': channel(kf(0, [6, 0, 0]), kf(n / 2, [11, 0, 1.5]), kf(n, [6, 0, 0]))}
+    elif name == 'bellbronze':
+        bones['clapper'] = {'rotation': channel(kf(0, [0, 0, 6]), kf(n / 2, [0, 0, -6]), kf(n, [0, 0, 6]))}
+    else:
+        bones['candles'] = {'scale': channel(kf(0, [1, 1, 1]), kf(n * 0.3, [1, 1.04, 1]), kf(n * 0.6, [1, 0.98, 1]), kf(n, [1, 1, 1]))}
+    return {'format_version': '1.8.0', 'animations': {'animation.armor.idle': {'loop': True, 'animation_length': n, 'bones': bones}}}
+
+
 def write_json(rel, obj):
     path = os.path.join(ROOT, rel)
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -573,6 +745,13 @@ def main():
     write_json('geo/entity/ember_ghost.geo.json', g.geo())
     g.texture(23).save(os.path.join(ROOT, 'textures', 'entity', 'ember_ghost.png'))
     write_json('animations/entity/ember_ghost.animation.json', ember_ghost_animations())
+    for name, builder, seed in (('wanderer', wanderer_armor, 31), ('bellbronze', bellbronze_armor, 32), ('wickiron', wickiron_armor, 33)):
+        am = builder()
+        write_json('geo/item/armor/%s.geo.json' % name, am.geo())
+        path = os.path.join(ROOT, 'textures', 'item', 'armor', name + '.png')
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        am.texture(seed).save(path)
+        write_json('animations/item/armor/%s.animation.json' % name, armor_animations(name))
     print('ok')
 
 

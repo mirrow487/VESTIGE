@@ -6,5 +6,20 @@
   "moveset": "vestige:fang",
   "attack_rating": 62,
   "poise_damage": 1.0,
-  "weight": 1.5
+  "weight": 1.5,
+  "rarity": "uncommon",
+  "damage": {
+    "slash": 44,
+    "cinder": 18
+  },
+  "scaling": {
+    "dexterity": "B",
+    "lamplight": "D"
+  },
+  "requirements": {
+    "dexterity": 13
+  },
+  "status": {
+    "rend": 6
+  }
 }

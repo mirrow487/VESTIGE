@@ -99,7 +99,8 @@
         "stamina": 0,
         "motion_value": 2.6,
         "poise_damage": 0,
-        "damage": 0
+        "damage": 0,
+        "physical": "strike"
       },
       "pose": "bell_riposte",
       "hit": {

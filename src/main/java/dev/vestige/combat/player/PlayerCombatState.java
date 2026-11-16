@@ -12,6 +12,9 @@ public final class PlayerCombatState {
     long lastCombatTick = Long.MIN_VALUE / 2;
     /** Until this tick the next landed hit is a critical (Quickstep, GDD §7.11). */
     long keenUntil = Long.MIN_VALUE / 2;
+    /** Poise damage taken since the pool last reset (GDD §7.8). */
+    float poiseTaken;
+    long lastPoiseHit = Long.MIN_VALUE / 2;
 
     public boolean keen(long now) {
         return now <= keenUntil;

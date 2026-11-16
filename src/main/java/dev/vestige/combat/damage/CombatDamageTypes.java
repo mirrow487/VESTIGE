@@ -14,8 +14,15 @@ import net.minecraft.world.entity.Entity;
 public final class CombatDamageTypes {
     public static final ResourceKey<DamageType> WEAPON = ResourceKey.create(Registries.DAMAGE_TYPE, VestigeIds.id("weapon"));
     public static final ResourceKey<DamageType> ENEMY_ATTACK = ResourceKey.create(Registries.DAMAGE_TYPE, VestigeIds.id("enemy_attack"));
+    /** Status damage (Rend bursts, Scorch burns): already in VESTIGE units, cannot be dodged. */
+    public static final ResourceKey<DamageType> STATUS = ResourceKey.create(Registries.DAMAGE_TYPE, VestigeIds.id("status"));
 
     private CombatDamageTypes() {}
+
+    public static DamageSource status(Entity victim, Entity source) {
+        var holder = victim.level().registryAccess().registryOrThrow(Registries.DAMAGE_TYPE).getHolderOrThrow(STATUS);
+        return new DamageSource(holder, source);
+    }
 
     public static DamageSource source(Entity attacker, ResourceKey<DamageType> type) {
         return attacker.level().damageSources().source(type, attacker);

@@ -1,0 +1,12 @@
+{
+  "items": [
+    "vestige:talisman_of_the_grove"
+  ],
+  "kind": "talisman",
+  "weight": 0.5,
+  "rarity": "uncommon",
+  "description": "Out of combat, you mend three times as fast.",
+  "stats": {
+    "perk": "grove"
+  }
+}
